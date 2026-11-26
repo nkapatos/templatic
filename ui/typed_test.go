@@ -51,6 +51,14 @@ func TestAttrsRefusesFrameworkMarkers(t *testing.T) {
 	}
 }
 
+func TestAttrsTakesAHook(t *testing.T) {
+	cmd := live.NewCommand[openArgs]("hooked.form")
+	got := renderString(t, context.Background(), FormFor(cmd, "/x", Attrs(Hook("reset", map[string]int{"n": 1}))))
+	if !strings.Contains(got, `data-tc-hook="reset"`) || !strings.Contains(got, `data-tc-hook-args="{&#34;n&#34;:1}"`) {
+		t.Fatalf("hook attributes missing: %s", got)
+	}
+}
+
 func TestStyleHooksOnContainers(t *testing.T) {
 	ctx := context.Background()
 	if got := renderString(t, ctx, StreamItem("k1", nil, Class("msg"))); got != `<div data-tc-item="k1" class="msg"></div>` {

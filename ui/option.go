@@ -45,11 +45,14 @@ func Class(classes ...string) Option {
 }
 
 // Attrs adds attributes to the element: a string is escaped, true renders a
-// bare attribute, false omits it. It panics on data-tc-* markers and
-// attributes the element owns.
+// bare attribute, false omits it. It panics on data-tc-* markers other than
+// a Hook's, and on attributes the element owns.
 func Attrs(a templ.Attributes) Option {
 	for k := range a {
 		l := strings.ToLower(k)
+		if l == "data-tc-hook" || l == "data-tc-hook-args" {
+			continue
+		}
 		if strings.HasPrefix(l, "data-tc") || l == "href" || l == "type" || l == "class" || l == "action" || l == "method" || l == "enctype" || !validAttrName(l) {
 			panic("templatic: Attrs cannot set " + k)
 		}
