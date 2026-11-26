@@ -52,7 +52,7 @@ func WithHeartbeat(interval, writeTimeout time.Duration) Option {
 }
 
 // WithCoalesceWindow sets how long a session gathers a burst of publishes into one
-// SSE flush (default 8ms).
+// SSE flush (default 8ms); a burst's first event waits this long. d <= 0 keeps the default.
 func WithCoalesceWindow(d time.Duration) Option {
 	return func(w *World) {
 		if d > 0 {

@@ -18,7 +18,7 @@ const (
 	// A session that cannot drain its inbox is sent a resync instead.
 	inboxSize = 1024
 
-	// The first event flushes immediately; later ones join the in-flight write.
+	// The default window: events arriving within it after a burst's first event are written and flushed together.
 	coalesceWindow = 8 * time.Millisecond
 )
 
