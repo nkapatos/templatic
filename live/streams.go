@@ -20,7 +20,9 @@ type Stream struct {
 // Name returns the stream's topic.
 func (s *Stream) Name() string { return s.name }
 
-// Stream declares, or re-declares, a stream under topic.
+// Stream declares, or re-declares, a stream under topic. Items appended while
+// a session is away reach it on reconnect as a swap of topic's region with
+// render's output, so a page catches up only if it renders that region.
 func (w *World) Stream(topic string, render func() templ.Component) *Stream {
 	validateTopic(topic)
 	w.mu.Lock()
