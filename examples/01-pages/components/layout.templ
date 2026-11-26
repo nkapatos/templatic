@@ -1,0 +1,44 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+// Nav is one entry of the site menu.
+type Nav struct {
+	Href, Label string
+}
+
+var menu = []Nav{{"/", "Home"}, {"/about", "About"}}
+
+templ Layout(title, current string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · pages</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			// Links the hashed app.css from the manifest.
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+		</head>
+		<body>
+			<header>
+				<a class="brand" href="/">pages</a>
+				<nav>
+					for _, n := range menu {
+						<a
+							href={ templ.SafeURL(n.Href) }
+							if n.Href == current {
+								aria-current="page"
+							}
+						>{ n.Label }</a>
+					}
+				</nav>
+			</header>
+			<main>
+				{ children... }
+			</main>
+			<footer>Server-rendered with templ. No live state on these pages.</footer>
+			@templatic.Boot(templatic.BootOptions{Assets: "/_templatic"})
+		</body>
+	</html>
+}
