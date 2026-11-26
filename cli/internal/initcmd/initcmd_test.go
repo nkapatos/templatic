@@ -50,3 +50,27 @@ func TestDevBuildHasNoReleaseVersion(t *testing.T) {
 		t.Fatalf("replace without a release: %+v %v", d, err)
 	}
 }
+
+func TestReplaceIsRelativeToTheApp(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for dir, want := range map[string]string{
+		filepath.Join(root, "examples", "app"): "../..",
+		filepath.Join(root, "app"):             "..",
+		filepath.Join(root, "sub", "..", "x"):  "..",
+		root:                                   ".",
+	} {
+		d, err := newScaffoldData(dir, "app", "", root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if d.Version != replaceVersion {
+			t.Errorf("app %s: version = %q, want %q", dir, d.Version, replaceVersion)
+		}
+		if d.Replace != want {
+			t.Errorf("app %s: replace = %q, want %q", dir, d.Replace, want)
+		}
+	}
+}

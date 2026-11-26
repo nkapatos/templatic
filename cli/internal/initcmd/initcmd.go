@@ -109,13 +109,14 @@ func newScaffoldData(dir, modulePath, version, replace string) (scaffoldData, er
 	if err := module.CheckImportPath(modulePath); err != nil {
 		return scaffoldData{}, fmt.Errorf("init: %q is not a valid module path (--module): %w", modulePath, err)
 	}
+	// A replaced module's require version is never fetched, so it is the placeholder rather than the binary's (possibly unpushed) pseudo-version.
 	if version == "" {
-		if v, ok := binaryVersion(); ok {
-			version = v
-		} else if replace == "" {
-			return scaffoldData{}, errors.New("init: this templatic binary has no release version (a dev build): pass --version vX.Y.Z or --replace <checkout>")
-		} else {
+		if replace != "" {
 			version = replaceVersion
+		} else if v, ok := binaryVersion(); ok {
+			version = v
+		} else {
+			return scaffoldData{}, errors.New("init: this templatic binary has no release version (a dev build): pass --version vX.Y.Z or --replace <checkout>")
 		}
 	}
 	if replace != "" {
@@ -126,7 +127,7 @@ func newScaffoldData(dir, modulePath, version, replace string) (scaffoldData, er
 		if _, err := os.Stat(filepath.Join(r, "go.mod")); err != nil {
 			return scaffoldData{}, fmt.Errorf("init: --replace %s: no go.mod there", replace)
 		}
-		replace = filepath.ToSlash(r)
+		replace = replacePath(abs, r)
 	}
 	return scaffoldData{
 		Module:       modulePath,
@@ -137,6 +138,19 @@ func newScaffoldData(dir, modulePath, version, replace string) (scaffoldData, er
 		Replace:      replace,
 		ClientDeps:   clientDeps(),
 	}, nil
+}
+
+// replacePath is the go.mod replace target for checkout, relative to the app directory when one exists, so a committed app does not carry a machine's absolute path.
+func replacePath(appDir, checkout string) string {
+	rel, err := filepath.Rel(appDir, checkout)
+	if err != nil {
+		return filepath.ToSlash(checkout)
+	}
+	rel = filepath.ToSlash(rel)
+	if rel != "." && rel != ".." && !strings.HasPrefix(rel, "../") {
+		rel = "./" + rel
+	}
+	return rel
 }
 
 // binaryVersion is the release version of templatic this binary was built from; ok is false for a dev build.
