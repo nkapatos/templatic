@@ -1,0 +1,9 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 64rem; margin: 2rem auto; padding: 0 1rem; color: #1d2421; }
+.asof { color: #6b7570; font-size: .875rem; font-variant-numeric: tabular-nums; }
+.board { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .25rem; }
+.board li { display: flex; justify-content: space-between; padding: .2rem .5rem; border: 1px solid #d6ddd9; border-radius: .25rem; font-variant-numeric: tabular-nums; }
+.board .sym { font-weight: 600; }
+.board li[data-dir="up"] { background: #e6f4ea; color: #1e6b3a; }
+.board li[data-dir="down"] { background: #fbe9e7; color: #9b2c1f; }
+.board li[data-dir="up"] .px::after { content: " \25B2"; }
+.board li[data-dir="down"] .px::after { content: " \25BC"; }

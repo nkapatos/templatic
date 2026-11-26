@@ -1,0 +1,21 @@
+package components
+
+import "github.com/nkapatos/templatic/ui"
+
+templ Home(b *Board) {
+	@Layout("Ticker") {
+		<h1>Ticker board</h1>
+		<p class="asof">As of @ui.Cell(b.AsOf)</p>
+		<ol class="board">
+			for _, sym := range b.Symbols {
+				// data-dir follows the direction cell; CSS colors the row.
+				<li { ui.CellAttr(b.Dir.Get(sym), "data-dir")... }>
+					<span class="sym">{ sym }</span>
+					<span class="px">
+						@ui.Cell(b.Price.Get(sym))
+					</span>
+				</li>
+			}
+		</ol>
+	}
+}

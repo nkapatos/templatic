@@ -1,0 +1,23 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · table</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+		</head>
+		<body>
+			<main>
+				{ children... }
+			</main>
+			<footer>Open this page in two windows on different pages or sorts: both refresh, each keeps its own view.</footer>
+			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+		</body>
+	</html>
+}

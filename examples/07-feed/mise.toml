@@ -1,0 +1,12 @@
+[tasks.generate]
+description = "templ glue, client runtime and bundles (prod)"
+run = "go tool templatic generate"
+
+[tasks.dev]
+description = "rebuild on change, restart the app on .go changes, reload open pages"
+env = { TC_MODE = "dev" }
+run = "go tool templatic dev -exec 'go run .'"
+
+[tasks.check]
+description = "typecheck the client and vet the server"
+run = ["go tool templatic check-ts", "go vet ./..."]

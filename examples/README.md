@@ -11,6 +11,10 @@ directory with the commands in its README.
 | [03-forms](03-forms) | one command served to JS and plain form posts: validation, field errors, 422 re-render, redirect after save, 404, run-once submissions |
 | [04-url-state](04-url-state) | per-viewer state in the URL: tabs, search and the open item in a session region, swapped in place by `ui.Link` |
 | [05-hooks](05-hooks) | client-only behavior with hooks: a menu, a cookie-backed theme, a modal dialog; hooks on swapped-in markup |
+| [06-table](06-table) | a server-driven table: paging, search and sort in the URL; every viewer refreshed on new data with their own view (`SessionRegion.Refresh`) |
+| [07-feed](07-feed) | a live feed with streams: chat rooms on a `StreamFamily` appended at the bottom, an activity log on top, bounded history, reconnects |
+| [08-island-chart](08-island-chart) | a Chart.js chart in a lit island, fed by bound world cells; the library loads only where the island is used |
+| [09-ticker](09-ticker) | many values at a high rate to many viewers: cell families, coalescing, and a load program that measures it |
 
 ## Running one
 
