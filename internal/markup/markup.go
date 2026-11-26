@@ -1,4 +1,5 @@
 // Package markup holds attribute escaping, name grammar and cell value rendering.
+// The root templatic package and ui render with it, so server-rendered markup matches what the client runtime writes; generate uses its name grammar.
 package markup
 
 import (

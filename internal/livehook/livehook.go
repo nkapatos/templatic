@@ -1,4 +1,5 @@
 // Package livehook bridges live to livetest without widening live's public API.
+// live fills in the function variables from its test hook file; livetest calls them.
 package livehook
 
 import (

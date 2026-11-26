@@ -1,8 +1,3 @@
-// Package cli is the templatic command line: generate, dev, init, clean and check-ts.
-//
-// An app that needs plugins builds its own binary around Main:
-//
-//	os.Exit(cli.Main(os.Args[1:], os.Stdout, os.Stderr, cli.With(p)))
 package cli
 
 import (

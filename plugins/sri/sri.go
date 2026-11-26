@@ -1,4 +1,19 @@
 // Package sri records a Subresource Integrity hash for every script and stylesheet the bundle writes.
+//
+// The hashes are sha384 values in the manifest's Integrity map, keyed by the
+// output path relative to the dist directory. The templatic package adds
+// them as integrity attributes on the stylesheet and modulepreload links it
+// writes for files the manifest lists. [Integrity] computes one value for any bytes.
+//
+// Usage in an app build program (see [github.com/nkapatos/templatic/cli]):
+//
+//	os.Exit(cli.Main(os.Args[1:], os.Stdout, os.Stderr, cli.With(sri.New())))
+//
+// Or with the generate package directly:
+//
+//	generate.Run(generate.Options{Plugins: []generate.Plugin{sri.New()}})
+//
+// The plugin hooks [generate.Builder.OnManifest].
 package sri
 
 import (

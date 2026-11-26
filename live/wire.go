@@ -1,5 +1,3 @@
-// Package live is the server-side reactivity layer: cells, regions and commands
-// over SSE.
 package live
 
 import "encoding/json/jsontext"

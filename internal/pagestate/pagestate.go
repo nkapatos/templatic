@@ -1,5 +1,5 @@
 // Package pagestate is the per-request page state shared by middleware, Boot, Head
-// and ui.Island.
+// and ui.Island. The root templatic package and ui use it.
 package pagestate
 
 import (

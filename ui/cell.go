@@ -1,5 +1,3 @@
-// Package ui provides the templ components and attribute builders for
-// templatic markup.
 package ui
 
 import (

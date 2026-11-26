@@ -1,4 +1,28 @@
-// Package routes maps a pages directory to a Go route table. Experimental.
+// Package routes maps a directory of templ pages to a Go route table. It is experimental.
+//
+// Experimental: this package and [github.com/nkapatos/templatic/experimental/pages]
+// may change or be removed without notice. Nothing else in templatic depends
+// on them.
+//
+// [Scan] reads the .templ files under a pages directory and returns a
+// [Table], one [Page] per file. Every file is one route and must follow
+// these conventions, or Scan returns an error:
+//
+//   - The file path is the route path: users/list.templ is /users/list, and
+//     index.templ is the directory's own path.
+//   - A trailing underscore marks a path parameter: users/id_.templ is
+//     /users/{id}. Brackets are rejected because Go import paths cannot
+//     contain them.
+//   - The file defines exactly one exported component, and it takes exactly
+//     one parameter, a pages.Ctx.
+//   - File names do not start with "_" or ".".
+//
+// All routes are GET. [Generate] renders a Table as Go source with a
+// Routes function returning []pages.Route and a Register function for a
+// net/http ServeMux; [Write] does Scan and writes the result to
+// routes_gen.go in the pages directory.
+//
+//	t, err := routes.Write("pages")
 package routes
 
 import (

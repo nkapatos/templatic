@@ -1,4 +1,29 @@
 // Package budget reports each entry's gzip size and fails the build when an entry exceeds its limit.
+//
+// For every JavaScript entry the bundle wrote, the report shows the gzip
+// size of the entry together with its static imports, and the raw size. An
+// entry is named as in the manifest: "boot", "app", "islands/user-card",
+// "modules/x". A limit for a name the build does not have is an error, as is
+// a limit that is not positive.
+//
+// With no limits the plugin only reports. The report goes to os.Stdout unless
+// [Output] says otherwise.
+//
+// Usage in an app build program (see [github.com/nkapatos/templatic/cli]):
+//
+//	os.Exit(cli.Main(os.Args[1:], os.Stdout, os.Stderr,
+//		cli.With(budget.New(
+//			budget.Limit("boot", 20),
+//			budget.Limit("islands/big-chart", 60),
+//		)),
+//	))
+//
+// Or with the generate package directly:
+//
+//	generate.Run(generate.Options{Plugins: []generate.Plugin{budget.New(budget.Limit("boot", 20))}})
+//
+// The plugin hooks [generate.Builder.OnDone], so it runs after tc.json is
+// written.
 package budget
 
 import (

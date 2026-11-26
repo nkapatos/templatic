@@ -1,3 +1,6 @@
+// Package manifest reads the asset manifest (tc.json) that generate writes into dist.
+// Manifest and Module are the data; Source hands out the current one, reloading it in dev.
+// The root templatic package re-exports the types and pagestate carries the Source per request.
 package manifest
 
 import (

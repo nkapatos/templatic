@@ -1,5 +1,20 @@
-// Package env exposes environment variables with an explicit prefix to client code as esbuild defines;
-// an empty prefix is an error.
+// Package env exposes environment variables with an explicit prefix to client code as esbuild defines.
+//
+// Each variable whose name starts with the prefix becomes a define
+// "process.env.NAME" whose value is the variable's value as a string
+// literal, so client code can read process.env.TC_PUBLIC_API at build time.
+// The prefix is required: an empty prefix is an error, so the whole
+// environment is never exposed. A variable that equals the prefix exactly is
+// skipped. Defines set in [generate.Options.Defines] win over these.
+//
+// Usage in an app build program (see [github.com/nkapatos/templatic/cli]):
+//
+//	os.Exit(cli.Main(os.Args[1:], os.Stdout, os.Stderr,
+//		cli.With(env.New("TC_PUBLIC_")),
+//	))
+//
+// [Lookup] replaces os.Environ as the source, which tests use.
+// The plugin hooks [generate.Builder.OnConfig].
 package env
 
 import (

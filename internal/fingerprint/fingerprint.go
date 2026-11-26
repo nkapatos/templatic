@@ -1,3 +1,5 @@
+// Package fingerprint hashes asset files into the short content digests used as cache-busting versions.
+// The root templatic package uses it for AssetFingerprint and for checking versioned asset URLs.
 package fingerprint
 
 import (
@@ -31,6 +33,7 @@ type entry_ struct {
 	hash        string
 }
 
+// Get returns the hash of the file at path, rehashing only when its mtime or size changed.
 func (c *Cache) Get(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {

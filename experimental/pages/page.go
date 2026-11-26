@@ -1,4 +1,23 @@
 // Package pages is the request-time side of the experimental pages router.
+//
+// Experimental: this package and [github.com/nkapatos/templatic/experimental/routes]
+// may change or be removed without notice. Nothing else in templatic depends
+// on them.
+//
+// A page is a templ component that takes a [Ctx] and returns a
+// [github.com/a-h/templ.Component]. [Page] turns one into a
+// [net/http.Handler] that renders it, optionally inside a layout
+// ([WithLayout]), and sets Cache-Control: no-cache. A [Route] describes a
+// page in a router-neutral way: method, path with {name} segments, parameter
+// names and handler. [Route.ServeMuxPattern] gives the net/http pattern; for
+// another router, read Method, Path and Params and mount Handler yourself.
+//
+// [Ctx] carries the request: [Ctx.Request], [Ctx.Context], [Ctx.Path] for path
+// parameters and [Ctx.Query] for query parameters. Path parameters are read
+// with Request.PathValue, so routers other than net/http (and chi 5.1 or
+// later) must call SetPathValue.
+//
+// The routes package generates the []Route for a directory of pages.
 package pages
 
 import (

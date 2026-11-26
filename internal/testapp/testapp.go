@@ -1,4 +1,5 @@
 // Package testapp is the fixture app of the generate tests, shared by the packages that run generate over it.
+// It copies generate/testdata/app into a temporary module; only tests import it.
 package testapp
 
 import (

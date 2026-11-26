@@ -1,5 +1,37 @@
-// Package livetest runs live commands against an in-memory session and records what
-// they sent.
+// Package livetest runs live commands against an in-memory session in tests.
+//
+// [New] connects a [Session] to a [live.World] without HTTP or a browser. The
+// session records every event the world sends it, and the helpers run
+// registered commands through their handlers and input decoding, skipping
+// the HTTP layer: [Call] and [Session.Do] with JSON-shaped input, [Submit] and
+// [Session.DoForm] with form fields. The test then reads what was pushed:
+// [Session.Swaps], [Session.LastSwap], [Session.Appends], [Session.Cell] and
+// [Session.Events]. [Session.WaitSwap] polls for a swap that arrives
+// asynchronously and fails the test on timeout. The session is retired when
+// the test ends.
+//
+// A run returns the command handler's result and error as is; a refused input
+// comes back as an error that [live.InputErrors] can list.
+//
+//	func TestAdd(t *testing.T) {
+//		w := live.NewWorld()
+//		count := live.NewCell(w, "count", 0)
+//		Add.Handle(w, func(s *live.Session, in AddIn) (any, error) {
+//			count.Update(func(v int) int { return v + in.N })
+//			return nil, nil
+//		})
+//
+//		s := livetest.New(t, w)
+//		if _, err := livetest.Call(s, Add, AddIn{N: 2}); err != nil {
+//			t.Fatal(err)
+//		}
+//		var got int
+//		if !s.Cell("count", &got) || got != 2 {
+//			t.Fatalf("count = %d", got)
+//		}
+//	}
+//
+// This package is for tests only.
 package livetest
 
 import (

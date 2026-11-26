@@ -1,4 +1,5 @@
 // Package form decodes submitted forms into a command's input struct.
+// live uses it to decode form commands; ui uses it to check input types and list their field names.
 package form
 
 import (

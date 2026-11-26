@@ -1,4 +1,3 @@
-// Package generate runs the templatic compiler pass: Go glue, island TypeScript, runtime copy and esbuild bundle.
 package generate
 
 import (

@@ -1,4 +1,5 @@
 // Package initcmd implements `templatic init`: it scaffolds a new app.
+// The templates it renders live in the scaffold directory, which is embedded.
 package initcmd
 
 import (

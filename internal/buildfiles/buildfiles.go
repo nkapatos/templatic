@@ -1,5 +1,5 @@
 // Package buildfiles names the files the build side writes into dist and the
-// manifest handlers read.
+// manifest handlers read. generate and devcmd write and watch them; manifest reads them.
 package buildfiles
 
 const (

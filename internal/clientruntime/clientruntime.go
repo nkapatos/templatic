@@ -1,4 +1,7 @@
 // Package clientruntime embeds templatic's browser runtime TypeScript sources.
+// generate copies them into an app's .templatic/runtime and checks the npm peer
+// dependencies against package.json; init pins the tested versions in a new app.
+// The TypeScript project itself is described in README.md.
 package clientruntime
 
 import (
