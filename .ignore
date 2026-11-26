@@ -1,7 +1,0 @@
-# Search tools (ripgrep and AI agents) skip these even though the
-# files are on disk: external/ is a reference checkout of templ
-# (~63k LOC beside ~7k of real code; it is gitignored but still on
-# the filesystem), node_modules by convention.
-# Pinned by external/README.md — code search belongs to the project.
-external/
-node_modules/

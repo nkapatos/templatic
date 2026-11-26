@@ -1,0 +1,9 @@
+# Categories for a release's generated notes, by PR label.
+changelog:
+  categories:
+    - title: Breaking changes
+      labels: [breaking]
+    - title: Dependencies
+      labels: [dependencies]
+    - title: Changes
+      labels: ["*"]

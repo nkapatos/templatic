@@ -1,0 +1,51 @@
+name: release
+
+# A pushed v* tag becomes a GitHub release. The tag must be semver, on main,
+# and its commit must have passed check. Notes are generated from the merged
+# PRs (.github/release.yml); a tag with a pre-release suffix (v0.1.0-alpha.1)
+# is marked pre-release. Last, the module proxy is asked for the version so
+# pkg.go.dev indexes it without waiting for the first user to fetch it.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      checks: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: tag is semver
+        run: |
+          echo "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$' \
+            || { echo "::error::$TAG is not a semver tag (vMAJOR.MINOR.PATCH[-pre])"; exit 1; }
+      - name: tag is on main
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::$TAG points at a commit that is not on main"; exit 1; }
+      - name: commit passed check
+        run: |
+          ok=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=check" \
+            --jq '[.check_runs[] | select(.conclusion == "success")] | length')
+          [ "$ok" -gt 0 ] || { echo "::error::check has not passed on $GITHUB_SHA"; exit 1; }
+      - name: create the release
+        run: |
+          pre=()
+          case "$TAG" in *-*) pre=(--prerelease) ;; esac
+          gh release create "$TAG" --verify-tag --generate-notes "${pre[@]}"
+      - name: request the version from proxy.golang.org
+        run: curl -fsS "https://proxy.golang.org/github.com/${GITHUB_REPOSITORY}/@v/${TAG}.info"
