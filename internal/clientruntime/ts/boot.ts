@@ -1,5 +1,5 @@
 import type { Manifest } from "./tc";
-import { readConfig, tcPhase, tcState } from "./tc";
+import { pageToken, readConfig, tcPhase, tcState } from "./tc";
 import { onSwapped } from "./live";
 import { connect } from "./connect";
 import { wire as wireActions } from "./actions";
@@ -70,7 +70,8 @@ async function boot(): Promise<void> {
 		wireHooks();
 		scanHooks(document);
 	});
-	await phase("live", () => void connect());
+	// A page rendered without page tokens (no World) is static: it has no live channel to open.
+	if (pageToken()) await phase("live", () => void connect());
 }
 
 void boot();
