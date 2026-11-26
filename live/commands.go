@@ -118,6 +118,8 @@ func (h *commandsHandler) run(w http.ResponseWriter, r *http.Request, s *Session
 		return
 	}
 	if push, ok := result.(Push); ok {
+		// The client pushes this URL on success, so it is the page's address from now on.
+		s.setReportedURL(push.URL())
 		payload, err := json.Marshal(struct {
 			URL string `json:"url"`
 		}{URL: push.URL()})

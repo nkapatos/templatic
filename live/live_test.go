@@ -251,6 +251,9 @@ func TestAtDeclaresPushURL(t *testing.T) {
 	if !strings.Contains(string(body), `"/workspace/nt-carry"`) {
 		t.Fatalf("note.open url missing: %s", string(body))
 	}
+	if got := sessionOf(w, "at-sid").URL(); got.Path != "/workspace/nt-carry" {
+		t.Fatalf("Session.URL() must follow At, got %v", got)
+	}
 }
 
 func TestAtRejectsNonRelativeURL(t *testing.T) {

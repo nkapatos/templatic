@@ -73,7 +73,7 @@ var attachWait = 2 * time.Second
 // Params returns the attested page-token params.
 func (s *Session) Params() map[string]string { return maps.Clone(s.params) }
 
-// URL returns the page address the client last reported.
+// URL returns the page address: the one the client last reported, or a later live.At the session's command returned.
 func (s *Session) URL() url.URL {
 	s.mu.Lock()
 	defer s.mu.Unlock()
