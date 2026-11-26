@@ -172,15 +172,14 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	writeWithDeadline := func(p []byte) (int, error) {
 		setDeadline()
-		n, err := w.Write(p)
-		if err != nil {
-			return n, err
-		}
-		flusher.Flush()
-		return n, nil
+		return w.Write(p)
 	}
 
-	_ = s.loop(ctx, c, prelude, writerFunc(writeWithDeadline), func() {})
+	// The loop flushes once per batch of frames, never holding a frame past its batch.
+	_ = s.loop(ctx, c, prelude, writerFunc(writeWithDeadline), func() {
+		setDeadline()
+		flusher.Flush()
+	})
 }
 
 func (h *streamHandler) resyncOnly(w http.ResponseWriter, flusher http.Flusher) {
