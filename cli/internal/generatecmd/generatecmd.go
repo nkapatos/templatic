@@ -124,7 +124,11 @@ func printSummary(stdout io.Writer, summary *generate.Summary, dist string) {
 		if variant == "" {
 			variant = "hooks"
 		}
-		fmt.Fprintf(stdout, "island: %-24s props=%s variant=%s\n", isl.Tag, isl.PropsType, variant)
+		fmt.Fprintf(stdout, "island: %-24s props=%s variant=%s", isl.Tag, isl.PropsType, variant)
+		for _, b := range isl.Binds {
+			fmt.Fprintf(stdout, " bind=%s:%s", b.Field, b.Topic)
+		}
+		fmt.Fprintln(stdout)
 	}
 	fmt.Fprintf(stdout, "runtime: %d file(s) → %s/runtime\n", len(summary.RuntimeFiles), generate.GenDir)
 	if summary.Manifest != "" {

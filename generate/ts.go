@@ -27,7 +27,8 @@ func writeIslandTS(opts Options, prog *program, isl Island) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("bind field %q not found in props struct %s (json field names only)", b.Field, isl.PropsType)
+			return fmt.Errorf("generate: %s: island %s: bind=%s:%s names no field of props struct %s (json field names: %s)",
+				isl.File, isl.Tag, b.Field, b.Topic, isl.PropsType, strings.Join(types.Fields[isl.PropsType], ", "))
 		}
 	}
 	dir := filepath.Join(opts.Root, opts.ClientDir, "islands")
