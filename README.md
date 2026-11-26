@@ -208,13 +208,21 @@ func main() {
 | `cmd/templatic` | the `templatic` binary |
 | `experimental/pages`, `experimental/routes` | optional pages router |
 
+## Design
+
+How templatic is put together, the rules it keeps and why: [design.md](design.md).
+
 ## Develop templatic
 
 ```sh
 mise run build   # bin/templatic
-mise run check   # every check: format, vet, lint, Go and TypeScript tests,
-                 # typecheck, public API report, clean tree
+mise run check   # every check: format, tidy, vet, lint, vulnerabilities,
+                 # Go and TypeScript tests, typecheck, public API report,
+                 # clean tree
 ```
+
+Conventions and the release process are in [AGENTS.md](AGENTS.md); see also
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

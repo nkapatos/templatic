@@ -32,7 +32,7 @@ app's `.templatic/runtime`, and the app's bundle includes them. The Go API is on
 
 Run from this directory (needs the node version pinned in the root `mise.toml`):
 
-    npm install
+    npm ci
     npm run typecheck   # tsc over ts/ and test/
     npm test            # Vitest with happy-dom
 
@@ -47,7 +47,7 @@ The public API is checked with API Extractor against
 
 ## mise tasks
 
-Run from the repo root. Each depends on `npm-install`, which runs `npm install` once
+Run from the repo root. Each depends on `npm-install`, which runs `npm ci` once
 if `node_modules` is missing.
 
 | Task | Runs |
