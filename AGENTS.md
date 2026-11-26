@@ -5,7 +5,7 @@ typed commands, islands, and a `generate` build step. Start with
 [README.md](README.md), then [design.md](design.md) (rules, architecture, the
 live channel, decisions); each package directory has its own README (file map,
 tests) and its package doc (`go doc ./<pkg>`). Open work is in the GitHub
-issues; `alpha` marks what the first alpha needs.
+issues; `alpha` marks what the first release (v0.1.0) needs.
 
 ## Commands
 
@@ -14,6 +14,7 @@ mise install        # pinned go, node and tools (mise.toml)
 mise run check      # every check; must pass on a clean tree before a commit
 mise run test       # go test -race -shuffle=on ./...
 mise run fmt-fix    # gofmt -w .
+mise run examples   # build and check every example under examples/
 ```
 
 `check` runs: build, fmt, tidy, vet, lint (staticcheck, exhaustive),
@@ -58,10 +59,12 @@ this file wins: for example no testify, no DI frameworks, no samber libraries.
 
 - Changes land on `main` through pull requests. A PR's title is its line in
   the release notes; label it `breaking` when it breaks the public API.
-- Versions are semver git tags, `vMAJOR.MINOR.PATCH`. Under v0 a minor
-  release may break the API; pre-releases carry a suffix (`v0.1.0-alpha.1`).
-- To release, tag a commit on `main` that passed check and push the tag:
-  `git tag -a v0.1.0-alpha.1 -m v0.1.0-alpha.1 && git push origin v0.1.0-alpha.1`.
+- Versions are semver git tags, `vMAJOR.MINOR.PATCH`, with no pre-release
+  suffix. Under v0 a minor release may break the API.
+- To release, first set the examples' templatic version in a PR
+  (`mise run examples-version v0.1.0`), then tag the merged commit on `main`
+  once it passed check, and push the tag:
+  `git tag -a v0.1.0 -m v0.1.0 && git push origin v0.1.0`.
   `.github/workflows/release.yml` verifies it, creates the GitHub release
   with generated notes and has pkg.go.dev index it.
 - A pushed tag is never moved or deleted: the Go checksum database has

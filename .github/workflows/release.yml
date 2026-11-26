@@ -2,8 +2,8 @@ name: release
 
 # A pushed v* tag becomes a GitHub release. The tag must be semver, on main,
 # and its commit must have passed check. Notes are generated from the merged
-# PRs (.github/release.yml); a tag with a pre-release suffix (v0.1.0-alpha.1)
-# is marked pre-release. Last, the module proxy is asked for the version so
+# PRs (.github/release.yml). Tags are plain vMAJOR.MINOR.PATCH, with no
+# pre-release suffix. Last, the module proxy is asked for the version so
 # pkg.go.dev indexes it without waiting for the first user to fetch it.
 
 on:
@@ -31,8 +31,8 @@ jobs:
           fetch-depth: 0
       - name: tag is semver
         run: |
-          echo "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$' \
-            || { echo "::error::$TAG is not a semver tag (vMAJOR.MINOR.PATCH[-pre])"; exit 1; }
+          echo "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' \
+            || { echo "::error::$TAG is not a semver tag (vMAJOR.MINOR.PATCH, no suffix)"; exit 1; }
       - name: tag is on main
         run: |
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
@@ -44,8 +44,6 @@ jobs:
           [ "$ok" -gt 0 ] || { echo "::error::check has not passed on $GITHUB_SHA"; exit 1; }
       - name: create the release
         run: |
-          pre=()
-          case "$TAG" in *-*) pre=(--prerelease) ;; esac
-          gh release create "$TAG" --verify-tag --generate-notes "${pre[@]}"
+          gh release create "$TAG" --verify-tag --generate-notes
       - name: request the version from proxy.golang.org
         run: curl -fsS "https://proxy.golang.org/github.com/${GITHUB_REPOSITORY}/@v/${TAG}.info"
