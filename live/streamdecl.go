@@ -88,12 +88,14 @@ func (d *StreamDecl[T]) Region(items []T) templ.Component {
 	})
 }
 
-// Bind registers the stream on w.
+// Bind registers the stream on w. A reconnecting page catches up through a
+// swap of the stream's region, so render it with Region, not Items alone.
 func (d *StreamDecl[T]) Bind(w *World, src func() []T) *Stream {
 	return w.Stream(d.topic, func() templ.Component { return d.Items(src()) })
 }
 
-// BindRegion registers the stream with a replay the app renders itself.
+// BindRegion registers the stream with a replay the app renders itself; the
+// page must render that replay inside a region of the stream's topic.
 func (d *StreamDecl[T]) BindRegion(w *World, render func() templ.Component) *Stream {
 	return w.Stream(d.topic, render)
 }

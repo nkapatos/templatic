@@ -6,9 +6,9 @@
 // the HTTP layer: [Call] and [Session.Do] with JSON-shaped input, [Submit] and
 // [Session.DoForm] with form fields. The test then reads what was pushed:
 // [Session.Swaps], [Session.LastSwap], [Session.Appends], [Session.Cell] and
-// [Session.Events]. [Session.WaitSwap] polls for a swap that arrives
-// asynchronously and fails the test on timeout. The session is retired when
-// the test ends.
+// [Session.Events]. [Session.WaitSwap] and [Session.WaitAppend] poll for a
+// swap or an append that arrives asynchronously and fail the test on
+// timeout. The session is retired when the test ends.
 //
 // A run returns the command handler's result and error as is; a refused input
 // comes back as an error that [live.InputErrors] can list.
@@ -81,7 +81,7 @@ func Request(r *http.Request) Option { return func(c *config) { c.req = r } }
 
 var seq atomic.Uint64
 
-// New connects a session to w; it is retired when the test ends.
+// New connects a session to w, running w's OnConnect hooks; it is retired when the test ends.
 func New(t testing.TB, w *live.World, opts ...Option) *Session {
 	t.Helper()
 	cfg := config{sid: fmt.Sprintf("livetest-%d", seq.Add(1))}
@@ -178,6 +178,23 @@ func (s *Session) LastSwap(topic string) (string, bool) {
 		return "", false
 	}
 	return sw[len(sw)-1], true
+}
+
+// WaitAppend waits up to d for an item appended to stream topic containing substr.
+func (s *Session) WaitAppend(topic, substr string, d time.Duration) string {
+	s.t.Helper()
+	deadline := time.Now().Add(d)
+	for {
+		for _, h := range s.Appends(topic) {
+			if strings.Contains(h, substr) {
+				return h
+			}
+		}
+		if time.Now().After(deadline) {
+			s.t.Fatalf("livetest: no append to %s containing %q within %v", topic, substr, d)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
 }
 
 // Appends returns the item HTML of every append to stream topic.

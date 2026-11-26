@@ -109,12 +109,6 @@ func TestSessionsAreIsolatedAndBroadcastsReachAll(t *testing.T) {
 	if !b.Cell("notes.count", &n) || n != 1 {
 		t.Fatalf("world cell on b = %d", n)
 	}
-	deadline := time.Now().Add(time.Second)
-	for len(b.Appends("notes.log")) == 0 {
-		if time.Now().After(deadline) {
-			t.Fatal("append never reached b")
-		}
-		time.Sleep(time.Millisecond)
-	}
+	b.WaitAppend("notes.log", "", time.Second)
 	a.WaitSwap("note.surface", "slow", time.Second)
 }
