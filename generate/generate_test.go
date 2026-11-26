@@ -537,7 +537,7 @@ func bindErrorTest(t *testing.T, bindText, wantErr string) {
 
 func TestBindFieldMustExistInPropsStruct(t *testing.T) {
 	bindErrorTest(t, "bind=nosuchfield:chart.focus",
-		"bind field \"nosuchfield\" not found in props struct ChartProps")
+		"island big-chart: bind=nosuchfield:chart.focus names no field of props struct ChartProps")
 }
 
 func TestBindRequiresLitVariant(t *testing.T) {
