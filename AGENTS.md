@@ -2,8 +2,8 @@
 
 templatic is a Go library on templ: server-rendered pages kept live over SSE,
 typed commands, islands, and a `generate` build step. Start with
-[README.md](README.md), then [design.md](design.md) (rules, architecture, wire
-protocol, decisions); each package directory has its own README (file map,
+[README.md](README.md), then [design.md](design.md) (rules, architecture, the
+live channel, decisions); each package directory has its own README (file map,
 tests) and its package doc (`go doc ./<pkg>`). Open work is in the GitHub
 issues; `alpha` marks what the first alpha needs.
 
