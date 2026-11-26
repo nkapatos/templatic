@@ -8,7 +8,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/urfave/cli/v3 v3.14.0
 	golang.org/x/mod v0.43.0
-	golang.org/x/tools v0.52.0
+	golang.org/x/tools v0.53.0
 )
 
 require (
@@ -23,7 +23,7 @@ require (
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/nishanths/exhaustive v0.17.1 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	honnef.co/go/tools v0.8.2 // indirect
