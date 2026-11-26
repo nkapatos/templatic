@@ -1,0 +1,25 @@
+# Weekly dependency updates. Minor and patch updates come grouped in one PR
+# per ecosystem; major updates come one PR each. CI (check) gates every PR.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /internal/clientruntime
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]

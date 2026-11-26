@@ -19,3 +19,7 @@ node_modules
 # Local binaries
 /bin/
 /templatic
+
+# Claude Code: machine-local settings and worktrees (the skills are shared)
+.claude/settings.local.json
+.claude/worktrees/

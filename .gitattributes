@@ -1,1 +1,9 @@
+* text=auto eol=lf
+
+# Generated: collapsed in GitHub diffs.
 *_templ.go linguist-generated=true
+*_tc.go linguist-generated=true
+internal/clientruntime/etc/*.api.md linguist-generated=true
+
+# Vendored agent skills: not counted in the repository's languages.
+.claude/skills/** linguist-vendored=true

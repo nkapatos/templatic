@@ -1,8 +1,12 @@
 # Framework toolchain and checks. Examples live in their own repo/dir
-# and carry their own tasks.
+# and carry their own tasks. Dev tools are pinned here, not in go.mod, so
+# they stay out of the module graph of apps that depend on templatic
+# (staticcheck, exhaustive and templ stay in go.mod's tool block).
 [tools]
 go = "1.27.4"
 node = "26.13.1"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.10.0"
+actionlint = "1.7.12"
 
 [tasks.build]
 description = "Build the templatic CLI into bin/"
@@ -17,6 +21,16 @@ set -euo pipefail
 bad=$(gofmt -l .)
 if [ -n "$bad" ]; then echo "fmt: unformatted files:" >&2; echo "$bad" >&2; exit 1; fi
 """
+
+[tasks.fmt-fix]
+description = "gofmt -w (rewrite unformatted files)"
+dir = "{{config_root}}"
+run = "gofmt -w ."
+
+[tasks.tidy]
+description = "go mod tidy -diff (fails when go.mod or go.sum is not tidy)"
+dir = "{{config_root}}"
+run = "go mod tidy -diff"
 
 [tasks.vet]
 description = "go vet ./..."
@@ -34,14 +48,24 @@ go tool exhaustive -typeignore '^reflect\\.Kind$' ./...
 
 [tasks.test]
 depends = ["npm-install"]
-description = "go test -race ./... (requires CGO)"
+description = "go test -race -shuffle=on ./... (requires CGO)"
 dir = "{{config_root}}"
-run = "CGO_ENABLED=1 go test -race ./..."
+run = "CGO_ENABLED=1 go test -race -shuffle=on ./..."
+
+[tasks.vuln]
+description = "govulncheck: known vulnerabilities in code templatic calls (needs network)"
+dir = "{{config_root}}"
+run = "govulncheck ./..."
+
+[tasks.lint-actions]
+description = "actionlint over .github/workflows"
+dir = "{{config_root}}"
+run = "actionlint"
 
 [tasks.npm-install]
-description = "npm install for the TS runtime, once, before the tasks that need node_modules"
+description = "npm ci for the TS runtime (exactly package-lock.json), once, before the tasks that need node_modules"
 dir = "{{config_root}}/internal/clientruntime"
-run = "[ -d node_modules ] || npm install --silent"
+run = "[ -d node_modules ] || npm ci --silent"
 
 [tasks.typecheck]
 depends = ["npm-install"]
@@ -73,7 +97,7 @@ npm run --silent api
 [tasks.check]
 description = "All checks, then assert the tree is clean"
 dir = "{{config_root}}"
-depends = ["build", "fmt", "vet", "lint", "test", "typecheck", "test-ts", "api"]
+depends = ["build", "fmt", "tidy", "vet", "lint", "lint-actions", "vuln", "test", "typecheck", "test-ts", "api"]
 run = """#!/usr/bin/env bash
 set -euo pipefail
 status=$(git status --porcelain --untracked-files=normal)

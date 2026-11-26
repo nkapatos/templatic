@@ -1,12 +1,24 @@
 name: check
 
-# mise installs the pinned go and node (mise.toml [tools]); `mise run check`
-# runs every check exactly as it does locally (mise.toml [tasks.check]).
+# mise installs the pinned go, node and tools (mise.toml [tools]); `mise run
+# check` runs every check exactly as it does locally (mise.toml [tasks.check]).
+# The weekly run catches newly published vulnerabilities (govulncheck) when
+# nothing was pushed.
 
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -14,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
-      - name: mise install (pinned go + node)
+      - name: mise install (pinned toolchain and tools)
         run: mise install
       - name: mise run check
         run: mise run check
