@@ -109,13 +109,14 @@ func newScaffoldData(dir, modulePath, version, replace string) (scaffoldData, er
 	if err := module.CheckImportPath(modulePath); err != nil {
 		return scaffoldData{}, fmt.Errorf("init: %q is not a valid module path (--module): %w", modulePath, err)
 	}
+	// A replaced module's require version is never fetched, so it is the placeholder rather than the binary's (possibly unpushed) pseudo-version.
 	if version == "" {
-		if v, ok := binaryVersion(); ok {
-			version = v
-		} else if replace == "" {
-			return scaffoldData{}, errors.New("init: this templatic binary has no release version (a dev build): pass --version vX.Y.Z or --replace <checkout>")
-		} else {
+		if replace != "" {
 			version = replaceVersion
+		} else if v, ok := binaryVersion(); ok {
+			version = v
+		} else {
+			return scaffoldData{}, errors.New("init: this templatic binary has no release version (a dev build): pass --version vX.Y.Z or --replace <checkout>")
 		}
 	}
 	if replace != "" {

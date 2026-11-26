@@ -66,6 +66,9 @@ func TestReplaceIsRelativeToTheApp(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if d.Version != replaceVersion {
+			t.Errorf("app %s: version = %q, want %q", dir, d.Version, replaceVersion)
+		}
 		if d.Replace != want {
 			t.Errorf("app %s: replace = %q, want %q", dir, d.Replace, want)
 		}
