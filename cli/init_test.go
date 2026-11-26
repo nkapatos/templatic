@@ -66,7 +66,7 @@ func TestInitSmoke(t *testing.T) {
 	if err := os.Symlink(nodeModules, filepath.Join(dir, "node_modules")); err != nil {
 		t.Fatal(err)
 	}
-	env := append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod", "GOPROXY=off")
+	env := append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod")
 	goCmd := func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("go", args...)

@@ -1,5 +1,8 @@
 # templatic
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/nkapatos/templatic.svg)](https://pkg.go.dev/github.com/nkapatos/templatic)
+[![check](https://github.com/nkapatos/templatic/actions/workflows/check.yml/badge.svg)](https://github.com/nkapatos/templatic/actions/workflows/check.yml)
+
 templatic makes web pages that stay up to date on their own. You build the
 pages on the server in Go, and when something changes on the server (a
 counter, a list, a status), every open page shows the change right away,

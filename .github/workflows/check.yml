@@ -1,10 +1,7 @@
 name: check
 
-# The clean-tree invariant, enforced per push and pull request.
-# mise installs the pinned toolchain (go, node — see mise.toml tools);
-# `mise run check` then covers fmt, vet, lint, race-detector
-# tests, typecheck and the clean-tree assertion exactly as it
-# does locally (mise.toml tasks.check).
+# mise installs the pinned go and node (mise.toml [tools]); `mise run check`
+# runs every check exactly as it does locally (mise.toml [tasks.check]).
 
 on:
   push:
@@ -15,8 +12,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
       - name: mise install (pinned go + node)
         run: mise install
       - name: mise run check
