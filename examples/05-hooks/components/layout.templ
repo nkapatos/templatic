@@ -1,0 +1,45 @@
+package components
+
+import (
+	"github.com/nkapatos/templatic"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// The server paints the theme from the cookie, so the first paint is right.
+templ Layout(title string, p Page) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme={ p.Theme }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · hooks</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+		</head>
+		<body>
+			<header>
+				<a class="brand" href="/">hooks</a>
+				// Without JS a <details> still opens and closes; the hook adds
+				// Escape and click-outside.
+				<details class="menu" { ui.Hook("menu", nil)... }>
+					<summary>Menu</summary>
+					<ul>
+						<li><a href="/">Home</a></li>
+						<li><a href="/help">Help</a></li>
+					</ul>
+				</details>
+				// Without JS the form POSTs and the server sets the cookie;
+				// with JS the hook sets it and repaints in place.
+				<form class="theme" method="post" action="/theme" { ui.Hook("theme", themeArgs())... }>
+					<input type="hidden" name="theme" value={ other(p.Theme) }/>
+					<input type="hidden" name="back" value={ p.Path }/>
+					<button type="submit">Switch to { other(p.Theme) }</button>
+				</form>
+			</header>
+			<main>
+				{ children... }
+			</main>
+			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+		</body>
+	</html>
+}

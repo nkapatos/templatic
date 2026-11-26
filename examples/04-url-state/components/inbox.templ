@@ -1,0 +1,73 @@
+package components
+
+import "github.com/nkapatos/templatic/ui"
+
+templ Page(v View) {
+	@Layout("Inbox") {
+		<h1>Inbox</h1>
+		<p class="muted">
+			The tab, the search and the open item live in the address bar.
+			Copy it, reload it or go back: the page comes back the same.
+		</p>
+		// First paint of the region; Navigate's handler swaps it later.
+		@InboxRegion.Render(v)
+	}
+}
+
+//templatic:region topic-of=InboxTopic
+templ Inbox(v View) {
+	<nav class="tabs">
+		@tab(v, "open", "Open")
+		@tab(v, "done", "Done")
+	</nav>
+	// With JS the submit raises Navigate; without JS it POSTs to /search,
+	// which redirects to the View's URL.
+	@ui.FormFor(Navigate, "/search", ui.Class("search")) {
+		<input type="hidden" name="tab" value={ v.Tab }/>
+		<input type="search" name="q" value={ v.Q } placeholder="Search titles" aria-label="Search titles"/>
+		<button type="submit">Search</button>
+		if v.Q != "" {
+			@ui.Link(Navigate, View{Tab: v.Tab}, View{Tab: v.Tab}.URL()) {
+				Clear
+			}
+		}
+	}
+	<div class="panes">
+		<ul class="list">
+			for _, it := range Listed(v.Tab, v.Q) {
+				<li>
+					@ui.Link(Navigate, v.WithOpen(it.ID), v.WithOpen(it.ID).URL(), current(it.ID == v.Open)) {
+						{ it.Title }
+					}
+				</li>
+			}
+			if len(Listed(v.Tab, v.Q)) == 0 {
+				<li class="muted">Nothing matches.</li>
+			}
+		</ul>
+		<section class="detail">
+			if it, ok := Find(v.Open); ok {
+				<h2>{ it.Title }</h2>
+				<p>{ it.Body }</p>
+				@ui.Link(Navigate, v.WithOpen(""), v.WithOpen("").URL()) {
+					Close
+				}
+			} else {
+				<p class="muted">Pick an item to read it here.</p>
+			}
+		</section>
+	</div>
+}
+
+templ tab(v View, tab, label string) {
+	@ui.Link(Navigate, v.WithTab(tab), v.WithTab(tab).URL(), current(v.Tab == tab)) {
+		{ label }
+	}
+}
+
+func current(on bool) ui.Option {
+	if !on {
+		return ui.Attrs(nil)
+	}
+	return ui.Attrs(templ.Attributes{"aria-current": "page"})
+}
