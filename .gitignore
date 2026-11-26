@@ -1,0 +1,20 @@
+.DS_Store
+
+
+# Node
+node_modules
+# …except the generate fixture's stub packages (lit, idiomorph): tiny
+# hand-written test doubles the pipeline tests resolve, not installed
+# deps. Ignored, they existed only in the checkout that made them, so
+# every fresh clone (CI, worktrees) failed the generate tests.
+!/generate/testdata/app/node_modules/
+# Likewise the CLI tests' fixture.
+!/cli/testdata/app/node_modules/
+
+# Build output (root-level scratch)
+/dist/
+.templatic/
+*.tmp
+
+# Local binaries
+/bin/

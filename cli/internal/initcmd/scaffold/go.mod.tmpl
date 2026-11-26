@@ -1,0 +1,12 @@
+module {{.Module}}
+
+go {{.GoVersion}}
+
+require (
+	github.com/a-h/templ {{.TemplVersion}}
+	github.com/nkapatos/templatic {{.Version}}
+)
+{{if .Replace}}
+replace github.com/nkapatos/templatic => {{.Replace}}
+{{end}}
+tool github.com/nkapatos/templatic/cmd/templatic

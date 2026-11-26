@@ -1,0 +1,42 @@
+{
+  "binds": {
+    "big-chart": [
+      {
+        "topic": "chart.focus",
+        "field": "focus"
+      },
+      {
+        "topic": "chart.range",
+        "field": "range"
+      }
+    ]
+  },
+  "version": 2,
+  "mode": "prod",
+  "base": "/_templatic/",
+  "modules": {
+    "boot": {
+      "file": "boot-HASH.js",
+      "imports": [
+        "chunks/chunk-HASH.js"
+      ]
+    },
+    "islands/big-chart": {
+      "file": "islands/big-chart-HASH.js",
+      "imports": [
+        "chunks/chunk-HASH.js",
+        "chunks/chunk-HASH.js"
+      ]
+    },
+    "islands/user-card": {
+      "file": "islands/user-card-HASH.js",
+      "css": [
+        "islands/user-card-HASH.css"
+      ],
+      "imports": [
+        "chunks/chunk-HASH.js",
+        "chunks/chunk-HASH.js"
+      ]
+    }
+  }
+}

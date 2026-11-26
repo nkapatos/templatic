@@ -1,0 +1,18 @@
+{
+	"name": "{{.Name}}",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"generate": "go tool templatic generate",
+		"dev": "TC_MODE=dev go tool templatic dev -exec 'go run .'",
+		"check-ts": "go tool templatic check-ts"
+	},
+	"dependencies": {
+{{- range $i, $d := .ClientDeps}}{{if $i}},{{end}}
+		"{{$d.Name}}": "{{$d.Version}}"
+{{- end}}
+	},
+	"devDependencies": {
+		"typescript": "7.0.2"
+	}
+}

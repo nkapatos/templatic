@@ -1,0 +1,15 @@
+package widgets
+
+//templatic:island tag=big-chart props=ChartProps variant=lit bind=focus:chart.focus bind=range:chart.range
+templ BigChart(props ChartProps) {
+	<div class="chart">
+		<span>{ props.Title }</span>
+	</div>
+	<script>
+		import { usedHelper } from "./chart-util";
+
+		onMount((el, props) => {
+			usedHelper(el);
+		})
+	</script>
+}

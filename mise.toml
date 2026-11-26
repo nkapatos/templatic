@@ -1,0 +1,81 @@
+# Framework toolchain and checks. Examples live in their own repo/dir
+# and carry their own tasks.
+[tools]
+go = "1.27.4"
+node = "26.13.1"
+
+[tasks.build]
+description = "Build the templatic CLI into bin/"
+dir = "{{config_root}}"
+run = "go build -o bin/templatic ./cmd/templatic"
+
+[tasks.fmt]
+description = "gofmt -l (fails on unformatted files)"
+dir = "{{config_root}}"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+bad=$(gofmt -l .)
+if [ -n "$bad" ]; then echo "fmt: unformatted files:" >&2; echo "$bad" >&2; exit 1; fi
+"""
+
+[tasks.vet]
+description = "go vet ./..."
+dir = "{{config_root}}"
+run = "go vet ./..."
+
+[tasks.lint]
+description = "staticcheck and exhaustive (pinned via go.mod tool directive)"
+dir = "{{config_root}}"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+go tool staticcheck ./...
+go tool exhaustive -typeignore '^reflect\\.Kind$' ./...
+"""
+
+[tasks.test]
+depends = ["npm-install"]
+description = "go test -race ./... (requires CGO)"
+dir = "{{config_root}}"
+run = "CGO_ENABLED=1 go test -race ./..."
+
+[tasks.npm-install]
+description = "npm install for the TS runtime, once, before the tasks that need node_modules"
+dir = "{{config_root}}/internal/clientruntime"
+run = "[ -d node_modules ] || npm install --silent"
+
+[tasks.typecheck]
+depends = ["npm-install"]
+description = "tsc --noEmit for the TS runtime and its tests"
+dir = "{{config_root}}/internal/clientruntime"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+npm run typecheck
+"""
+
+[tasks.test-ts]
+depends = ["npm-install"]
+description = "vitest + happy-dom for the TS runtime"
+dir = "{{config_root}}/internal/clientruntime"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+npm test --silent
+"""
+
+[tasks.api]
+depends = ["npm-install"]
+description = "API Extractor: the public SDK surface must match internal/clientruntime/etc/*.api.md"
+dir = "{{config_root}}/internal/clientruntime"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+npm run --silent api
+"""
+
+[tasks.check]
+description = "All checks, then assert the tree is clean"
+dir = "{{config_root}}"
+depends = ["build", "fmt", "vet", "lint", "test", "typecheck", "test-ts", "api"]
+run = """#!/usr/bin/env bash
+set -euo pipefail
+status=$(git status --porcelain --untracked-files=normal)
+if [ -n "$status" ]; then echo "check: tree not clean:" >&2; echo "$status" >&2; exit 1; fi
+"""

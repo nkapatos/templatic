@@ -1,0 +1,13 @@
+package widgets
+
+//templatic:island tag=user-card props=CardProps
+templ UserCard(props CardProps) {
+	<div class="card">
+		<p>{ props.Name }</p>
+	</div>
+	<script>
+		onMount((el, props) => {
+			el.classList.add("mounted");
+		})
+	</script>
+}

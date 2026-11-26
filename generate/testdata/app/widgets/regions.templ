@@ -1,0 +1,21 @@
+package widgets
+
+import "strings"
+
+const PanelTopic = "w.panel"
+
+//templatic:region topic=w.list
+templ ListRegion(items []string, title string) {
+	<h2>{ title }</h2>
+	<p>{ strings.Join(items, ",") }</p>
+}
+
+//templatic:region topic-of=PanelTopic
+templ Panel(p CardProps) {
+	<p>{ p.Name }</p>
+}
+
+//templatic:region topic=w.empty
+templ Empty() {
+	<p></p>
+}

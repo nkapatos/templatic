@@ -1,0 +1,23 @@
+{
+	"name": "@templatic/clientruntime",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+		"test": "vitest run",
+		"api": "rm -rf .api.tmp && tsc -p tsconfig.api.json && api-extractor run",
+		"api:update": "rm -rf .api.tmp && tsc -p tsconfig.api.json && api-extractor run --local"
+	},
+	"peerDependencies": {
+		"idiomorph": "~0.8.0",
+		"lit": "^3.3.3"
+	},
+	"devDependencies": {
+		"@microsoft/api-extractor": "7.60.1",
+		"happy-dom": "21.0.4",
+		"idiomorph": "0.8.0",
+		"lit": "3.3.3",
+		"typescript": "7.0.2",
+		"vitest": "5.1.2"
+	}
+}
