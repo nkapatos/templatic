@@ -1,11 +1,17 @@
 # Weekly dependency updates. Minor and patch updates come grouped in one PR
 # per ecosystem; major updates come one PR each. CI (check) gates every PR.
+# Cooldown: a release is proposed only once it is 7 days old, so a
+# compromised release is usually caught and pulled before it reaches a PR.
+# Security updates are not delayed. Actions are pinned to commit SHAs; the
+# version comment beside each pin is what Dependabot updates along with it.
 version: 2
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       go-minor-patch:
         update-types: [minor, patch]
@@ -13,6 +19,8 @@ updates:
     directory: /internal/clientruntime
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
@@ -20,6 +28,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       actions-minor-patch:
         update-types: [minor, patch]

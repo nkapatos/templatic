@@ -51,3 +51,16 @@ commit first, then run it. CI runs the same `mise run check`.
 Go skills for coding agents are vendored in [.claude/skills](.claude/skills)
 (from samber/cc-skills-golang, MIT). Where a skill and this file disagree,
 this file wins: for example no testify, no DI frameworks, no samber libraries.
+
+## Releases
+
+- Changes land on `main` through pull requests. A PR's title is its line in
+  the release notes; label it `breaking` when it breaks the public API.
+- Versions are semver git tags, `vMAJOR.MINOR.PATCH`. Under v0 a minor
+  release may break the API; pre-releases carry a suffix (`v0.1.0-alpha.1`).
+- To release, tag a commit on `main` that passed check and push the tag:
+  `git tag -a v0.1.0-alpha.1 -m v0.1.0-alpha.1 && git push origin v0.1.0-alpha.1`.
+  `.github/workflows/release.yml` verifies it, creates the GitHub release
+  with generated notes and has pkg.go.dev index it.
+- A pushed tag is never moved or deleted: the Go checksum database has
+  recorded it, so a moved tag breaks every app that depends on it.
