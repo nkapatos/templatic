@@ -1,5 +1,5 @@
-# Framework toolchain and checks. Examples live in their own repo/dir
-# and carry their own tasks. Dev tools are pinned here, not in go.mod, so
+# Framework toolchain and checks. Each example under examples/ is its own
+# module with its own tasks; `mise run examples` builds and checks them all. Dev tools are pinned here, not in go.mod, so
 # they stay out of the module graph of apps that depend on templatic
 # (staticcheck, exhaustive and templ stay in go.mod's tool block).
 [tools]
@@ -92,6 +92,56 @@ dir = "{{config_root}}/internal/clientruntime"
 run = """#!/usr/bin/env bash
 set -euo pipefail
 npm run --silent api
+"""
+
+[tasks.examples]
+description = "Every example: npm ci, generate, tidy, vet, test, check-ts; fail if a committed generated file is stale"
+dir = "{{config_root}}"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+shopt -s nullglob
+# Every example requires one templatic version: the latest v* tag, or the
+# untagged version a release PR is about to tag (v0.0.0 before any tag).
+latest=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo v0.0.0)
+want=""
+for d in examples/*/; do
+  [ -f "$d/go.mod" ] || continue
+  v=$(cd "$d" && go list -m github.com/nkapatos/templatic | awk '{print $2}')
+  if [ -z "$want" ]; then want=$v; fi
+  if [ "$v" != "$want" ]; then echo "examples: $d requires templatic $v, others $want (mise run examples-version)" >&2; exit 1; fi
+done
+if [ -n "$want" ] && [ "$want" != "$latest" ] && git rev-parse -q --verify "refs/tags/$want" >/dev/null; then
+  echo "examples: they require templatic $want, but $latest is the latest tag (mise run examples-version $latest)" >&2; exit 1
+fi
+for d in examples/*/; do
+  [ -f "$d/go.mod" ] || continue
+  echo "examples: $d"
+  (
+    cd "$d"
+    npm ci --no-audit --no-fund --loglevel=error
+    go tool templatic generate >/dev/null
+    go mod tidy -diff
+    go vet ./...
+    go test ./...
+    go tool templatic check-ts
+  )
+done
+status=$(git status --porcelain --untracked-files=normal -- examples)
+if [ -n "$status" ]; then echo "examples: generated files differ from the committed ones (run go tool templatic generate in each):" >&2; echo "$status" >&2; git diff --stat -- examples >&2; exit 1; fi
+"""
+
+[tasks.examples-version]
+description = "Set every example's templatic require to a version (the release PR, before tagging)"
+dir = "{{config_root}}"
+usage = 'arg "<version>" help="vMAJOR.MINOR.PATCH"'
+run = """#!/usr/bin/env bash
+set -euo pipefail
+v="${usage_version:?}"
+echo "$v" | grep -Eq '^v(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$' || { echo "examples-version: $v is not vMAJOR.MINOR.PATCH" >&2; exit 1; }
+for d in examples/*/; do
+  [ -f "$d/go.mod" ] || continue
+  (cd "$d" && go mod edit -require="github.com/nkapatos/templatic@$v")
+done
 """
 
 [tasks.check]
