@@ -65,6 +65,16 @@ describe("applyOps", () => {
 		expect(document.querySelector("span")!.textContent).toBe("v2");
 	});
 
+	test("an update re-renders a focused button, keeping its focus", () => {
+		document.body.innerHTML = `<div data-tc-collection="f" data-tc-ver="0"><div data-tc-item="a"><button>♥ 0</button></div></div>`;
+		const button = document.querySelector("button")!;
+		button.focus();
+		col.applyOps("f", 1, [u("a", `<div data-tc-item="a"><button>♥ 1</button></div>`)], noGap);
+		expect(document.querySelector("button")).toBe(button);
+		expect(button.textContent).toBe("♥ 1");
+		expect(document.activeElement).toBe(button);
+	});
+
 	test("hooks mount on insert and are destroyed on remove and trim", () => {
 		document.body.innerHTML = `<div data-tc-collection="h" data-tc-ver="0" data-tc-limit="2"></div>`;
 		const log: string[] = [];
