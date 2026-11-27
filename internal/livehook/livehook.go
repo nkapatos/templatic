@@ -25,8 +25,9 @@ type Conn struct {
 }
 
 var (
-	// Connect registers session sid on world as if its stream connected with r.
-	Connect func(world any, sid string, r *http.Request) Conn
+	// Connect registers session sid on world as if its stream connected with r
+	// and a page token carrying params.
+	Connect func(world any, sid string, params map[string]string, r *http.Request) Conn
 	// Dispatch runs action on the session, with form args when form is non-nil.
 	Dispatch func(session any, action string, args jsontext.Value, form url.Values, r *http.Request) (any, error)
 	// CellValue returns the current {"v":…} body of a session or world cell topic.

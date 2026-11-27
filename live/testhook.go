@@ -3,6 +3,7 @@ package live
 import (
 	"context"
 	"encoding/json/jsontext"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -11,14 +12,14 @@ import (
 )
 
 func init() {
-	livehook.Connect = func(wa any, sid string, r *http.Request) livehook.Conn {
+	livehook.Connect = func(wa any, sid string, params map[string]string, r *http.Request) livehook.Conn {
 		w := wa.(*World)
-		s := &Session{world: w, sid: sid}
+		s := &Session{world: w, sid: sid, params: maps.Clone(params)}
 		w.mu.Lock()
 		w.sessions[sid] = s
 		onConnect := slices.Clone(w.onConnect)
 		w.mu.Unlock()
-		info := w.captureRequest(r, nil)
+		info := w.captureRequest(r, s.params)
 		s.mu.Lock()
 		s.req = info
 		s.mu.Unlock()
