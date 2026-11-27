@@ -1,0 +1,57 @@
+package components
+
+import (
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// Login is the sign-in form; failed is the message after a refused attempt.
+templ Login(failed string) {
+	@Layout("Log in", nil) {
+		<h1>Log in</h1>
+		<p class="hint">Demo accounts: <code>alice</code> / <code>alice</code> (admin), <code>bob</code> / <code>bob</code> (viewer).</p>
+		<form method="post" action="/login" class="stack">
+			if failed != "" {
+				<p class="error" role="alert">{ failed }</p>
+			}
+			<label>Name <input name="name" autocomplete="username" required/></label>
+			<label>Password <input name="password" type="password" autocomplete="current-password" required/></label>
+			<button type="submit">Log in</button>
+		</form>
+	}
+}
+
+// Board is the signed-in page: the notice, the admin form and the activity
+// log. failed is ui.Failed after a refused no-JS notice.
+templ Board(u User, notice *live.Cell[string], log *live.Region, failed ui.Option) {
+	@Layout("Board", &u) {
+		<h1>Board</h1>
+		<p class="notice">@ui.Cell(notice)</p>
+		if u.Admin {
+			@ui.FormFor(PostNotice, "/notice", failed, ui.Class("stack")) {
+				<label>
+					New notice
+					<input name="text" value={ ui.FieldValue(ctx, "text", "") }/>
+				</label>
+				@ui.FieldError("text")
+				<button type="submit">Post notice</button>
+			}
+		} else {
+			<p class="hint">Only admins can post a notice.</p>
+		}
+		@ui.FormFor(Wave, "/wave") {
+			<button type="submit">Wave</button>
+		}
+		<h2>Activity</h2>
+		@log
+	}
+}
+
+// Activity is the log region's markup, newest first.
+templ Activity(entries []Entry) {
+	<ul class="log">
+		for _, e := range entries {
+			<li><b>{ e.Who }</b> { e.What }</li>
+		}
+	</ul>
+}

@@ -1,0 +1,15 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; color: #1d2421; }
+header { display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #d6ddd9; padding-bottom: 1rem; }
+.brand { font-weight: 600; color: inherit; text-decoration: none; margin-right: auto; }
+.notice { background: #f3f6f4; border-left: 4px solid #2f6f4f; padding: .75rem 1rem; }
+.hint { color: #6b7570; }
+.error { color: #c62828; }
+.stack { display: grid; gap: .75rem; max-width: 24rem; margin-bottom: 1rem; }
+label { display: grid; gap: .2rem; }
+input, button { font: inherit; }
+button { justify-self: start; }
+.log { padding: 0; list-style: none; }
+.log li { padding: .3rem 0; border-bottom: 1px solid #eef1ef; }
+[aria-invalid="true"] { outline: 2px solid #c62828; }
+[data-tc-field-error] { color: #c62828; font-size: .875rem; }
+[data-tc-field-error]:empty { display: none; }

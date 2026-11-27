@@ -1,0 +1,13 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; color: #1d2421; }
+footer { margin-top: 3rem; color: #6b7570; font-size: .875rem; }
+#tally { color: #6b7570; }
+form.add { display: flex; gap: .5rem; align-items: end; flex-wrap: wrap; }
+label { display: grid; gap: .2rem; }
+input, button { font: inherit; }
+input[name="n"] { width: 6rem; }
+[aria-invalid="true"] { outline: 2px solid #c62828; }
+[data-tc-field-error] { color: #c62828; font-size: .875rem; flex-basis: 100%; }
+[data-tc-field-error]:empty { display: none; }
+[data-tc-stream] [data-tc-item] { display: flex; gap: .5rem; align-items: baseline; padding: .3rem 0; border-bottom: 1px solid #eef1ef; }
+[data-tc-stream] time { color: #6b7570; font-size: .8rem; font-variant-numeric: tabular-nums; }
+[data-tc-stream] .tick { color: #6b7570; }

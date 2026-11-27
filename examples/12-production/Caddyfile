@@ -1,0 +1,17 @@
+# A TLS proxy in front of two replicas. Not run by the example; see README.
+example.com {
+	reverse_proxy app1:8080 app2:8080 {
+		# Sticky: the page, its live stream and its commands reach one replica.
+		lb_policy cookie
+
+		# X-Forwarded-For is set by default; incoming values from clients
+		# not listed in trusted_proxies are replaced, not appended to.
+
+		transport http {
+			# The app speaks HTTP/2 without TLS (http.Server.Protocols).
+			versions h2c
+			# Above the stream's 15s heartbeat, so an idle stream stays open.
+			read_timeout 60s
+		}
+	}
+}

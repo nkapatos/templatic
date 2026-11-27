@@ -1,0 +1,46 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// Home is the page: the shared count, this page's tally, the add form and the
+// log. failed is ui.Failed after a refused no-JS POST, else nil.
+templ Home(count *live.Cell[int], log []Entry, failed ui.Option) {
+	@Layout("testing") {
+		<h1>Count: <output id="count">@ui.Cell(count)</output></h1>
+		// A new page starts at zero; Add swaps it for the page that added.
+		@TallyRegion.Render(PageAdds{})
+		@ui.FormFor(Add, "/add", failed, ui.Class("add")) {
+			<label>
+				Step
+				<input name="n" type="number" value={ ui.FieldValue(ctx, "n", "1") }/>
+			</label>
+			<button type="submit">Add</button>
+			@ui.FieldError("n")
+		}
+		<h2>Log</h2>
+		// The region around the stream is what a reconnect replays into.
+		@Log.Region(log)
+	}
+}
+
+//templatic:region topic-of=TallyTopic
+templ Tally(a PageAdds) {
+	<p id="tally">
+		if a.Count == 0 {
+			This page has not added yet.
+		} else {
+			This page added { strconv.Itoa(a.Count) } times, last { strconv.Itoa(a.Last) }.
+		}
+	</p>
+}
+
+// EntryView is one log line, inside its stream item wrapper.
+templ EntryView(e Entry) {
+	<time>{ e.At.Format("15:04:05") }</time>
+	<span class={ e.Kind }>{ e.Text }</span>
+}

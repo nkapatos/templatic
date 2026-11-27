@@ -1,0 +1,23 @@
+package components
+
+import (
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// Home is the one page: the shared count and a form that adds to it.
+// failed is nil on a plain render, ui.Failed(r, err) after a refused no-JS POST.
+templ Home(count *live.Cell[int], failed ui.Option) {
+	@Layout("production") {
+		<h1>A shared count</h1>
+		<p class="count">@ui.Cell(count)</p>
+		@ui.FormFor(Add, "/add", failed) {
+			<label>
+				Step
+				<input name="n" type="number" value={ ui.FieldValue(ctx, "n", "1") }/>
+			</label>
+			<button type="submit">Add</button>
+			@ui.FieldError("n")
+		}
+	}
+}

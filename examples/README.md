@@ -15,6 +15,9 @@ directory with the commands in its README.
 | [07-feed](07-feed) | a live feed with streams: chat rooms on a `StreamFamily` appended at the bottom, an activity log on top, bounded history, reconnects |
 | [08-island-chart](08-island-chart) | a Chart.js chart in a lit island, fed by bound world cells; the library loads only where the island is used |
 | [09-ticker](09-ticker) | many values at a high rate to many viewers: cell families, coalescing, and a load program that measures it |
+| [10-testing](10-testing) | how an app tests its live pages: `livetest` for commands, cells, swaps and appends; a Playwright check with a TCP relay for reconnects |
+| [11-auth](11-auth) | login, per-user pages and admin-only commands: the user in the page token (`s.Params()`), an allowlisted cookie on commands, `http.CrossOriginProtection`, logout as a POST |
+| [12-production](12-production) | the dev loop and shipping: gzip that skips the stream, no-cache HTML, h2c behind a TLS proxy, timeouts above the heartbeat, `X-Forwarded-For`, graceful shutdown, sticky replicas, a Dockerfile |
 
 ## Running one
 
