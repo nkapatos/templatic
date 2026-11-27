@@ -34,6 +34,17 @@ test("modules: app loads once and runs before the promise resolves", async () =>
 	expect(ran()).toEqual(["app"]);
 });
 
+test("modules: an entry's CSS is linked once, also when Head linked it", async () => {
+	document.head.innerHTML = `<link rel="stylesheet" href="/_templatic/app-1.css">`;
+	modules.registerEntries(
+		{ version: 2, modules: { app: { file: mod("app"), css: ["app-1.css", "app-2.css"] } } },
+		"http://page.local/_templatic/tc.json",
+	);
+	await modules.loadEntry("app");
+	const hrefs = Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'), (l) => l.href);
+	expect(hrefs).toEqual(["http://page.local/_templatic/app-1.css", "http://page.local/_templatic/app-2.css"]);
+});
+
 test("modules: only app and modules/<name> entries register, from the modules map", async () => {
 	setup({ "islands/x-a": mod("island"), "modules/m": mod("m") });
 	await modules.requestModules(["m"]);
