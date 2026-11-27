@@ -11,24 +11,65 @@ import (
 	"examples/feed/components"
 )
 
-func TestPostAppendsToTheRoom(t *testing.T) {
-	w := live.NewWorld()
-	newFeed(w)
+// shown is a session whose page shows room and the activity log, as a room
+// page does.
+func shown(t *testing.T, w *live.World, f *feed, room string) *livetest.Session {
 	s := livetest.New(t, w)
+	r := f.room(room)
+	s.Show(r.Topic(), r.Version())
+	s.Show(f.activity.Topic(), f.activity.Version())
+	return s
+}
 
-	if _, err := livetest.Call(s, components.Post, components.PostIn{Room: "general", Name: "ada", Text: "hello"}); err != nil {
+func TestPostReachesPagesShowingTheRoom(t *testing.T) {
+	w := live.NewWorld()
+	f := newFeed(w)
+	general, random := shown(t, w, f, "general"), shown(t, w, f, "random")
+
+	if _, err := livetest.Call(general, components.Post, components.PostIn{Room: "general", Name: "ada", Text: "hello"}); err != nil {
 		t.Fatal(err)
 	}
-	items := s.Appends(components.Chat.Topic("general"))
-	if len(items) != 1 || !strings.Contains(items[0], `data-tc-item="m`) || !strings.Contains(items[0], "hello") {
-		t.Fatalf("chat.general appends = %q, want one keyed item with the text", items)
+	ops := general.Ops("chat.general")
+	if len(ops) != 1 || ops[0].Kind != "u" || !strings.Contains(ops[0].HTML, `<li data-tc-item="m`) || !strings.Contains(ops[0].HTML, "hello") {
+		t.Fatalf("chat.general = %+v, want one keyed <li> with the text", ops)
 	}
-	if got := s.Appends(components.Chat.Topic("random")); len(got) != 0 {
-		t.Fatalf("chat.random appends = %q, want none", got)
+	if got := random.Ops("chat.general"); len(got) != 0 {
+		t.Fatalf("a page showing #random got #general's ops: %+v", got)
 	}
-	// The session's own connect is the first event.
-	if log := s.Appends(components.ActivityTopic); len(log) != 2 || !strings.Contains(log[1], `class="post"`) {
-		t.Fatalf("activity appends = %q, want the join and the post", log)
+	if log := general.Ops(components.ActivityTopic); len(log) == 0 || !strings.Contains(log[len(log)-1].HTML, `class="post"`) {
+		t.Fatalf("activity = %+v, want the post last", log)
+	}
+}
+
+func TestLikeUpdatesAndDeleteRemoves(t *testing.T) {
+	w := live.NewWorld()
+	f := newFeed(w)
+	s := shown(t, w, f, "general")
+	if err := f.post(components.PostIn{Room: "general", Name: "ada", Text: "hi"}); err != nil {
+		t.Fatal(err)
+	}
+	key := f.room("general").Items()[0].Key()
+	for range 2 {
+		if _, err := livetest.Call(s, components.Like, components.MessageIn{Room: "general", ID: key}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := livetest.Call(s, components.Delete, components.MessageIn{Room: "general", ID: key}); err != nil {
+		t.Fatal(err)
+	}
+	var kinds []string
+	for _, op := range s.Ops("chat.general") {
+		kinds = append(kinds, op.Kind+":"+op.Key)
+	}
+	want := "u:" + key + ",u:" + key + ",u:" + key + ",d:" + key
+	if strings.Join(kinds, ",") != want {
+		t.Fatalf("ops %v, want %s", kinds, want)
+	}
+	if ops := s.Ops("chat.general"); !strings.Contains(ops[2].HTML, "♥ 2") {
+		t.Fatalf("second like renders %q", ops[2].HTML)
+	}
+	if _, err := livetest.Call(s, components.Like, components.MessageIn{Room: "general", ID: key}); err == nil {
+		t.Fatal("liking a deleted message must be refused")
 	}
 }
 
@@ -55,7 +96,7 @@ func TestARoomKeepsItsLastMessages(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got := f.messages("general")
+	got := f.room("general").Items()
 	if len(got) != keepMessages || got[0].Text != "n5" {
 		t.Fatalf("kept %d messages from %q, want %d from n5", len(got), got[0].Text, keepMessages)
 	}

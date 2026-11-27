@@ -48,7 +48,7 @@ func main() {
 		room := r.PathValue("room")
 		var c templ.Component
 		if slices.Contains(components.Rooms, room) {
-			c = components.Room(room, f.messages(room), f.recent(), r.URL.Query().Get("name"), failed)
+			c = components.Room(room, f.room(room), f.activity, r.URL.Query().Get("name"), failed)
 		} else {
 			c, status = components.NotFound("There is no room "+room+"."), http.StatusNotFound
 		}
@@ -70,6 +70,21 @@ func main() {
 		func(rw http.ResponseWriter, r *http.Request, err error) {
 			page(rw, r, ui.Failed(r, err), http.StatusUnprocessableEntity)
 		}))
+	// Like and delete without JavaScript: the same commands, then back to the
+	// room. A refused one (the message is gone) is a 404 page.
+	back := func(do func(components.MessageIn) error) func(*http.Request, components.MessageIn) (string, error) {
+		return func(_ *http.Request, in components.MessageIn) (string, error) {
+			if err := do(in); err != nil {
+				return "", err
+			}
+			return "/rooms/" + in.Room, nil
+		}
+	}
+	gone := func(rw http.ResponseWriter, r *http.Request, _ error) {
+		templ.Handler(components.NotFound("That message is gone."), templ.WithStatus(http.StatusNotFound)).ServeHTTP(rw, r)
+	}
+	mux.Handle("POST /rooms/{room}/messages/{id}/like", components.Like.FormPOST(w, back(f.like), gone))
+	mux.Handle("POST /rooms/{room}/messages/{id}/delete", components.Delete.FormPOST(w, back(f.remove), gone))
 	w.Mount(mux, "/live")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("public"))))
 	mux.Handle("GET /_templatic/", http.StripPrefix("/_templatic/", templatic.Assets(distDir)))

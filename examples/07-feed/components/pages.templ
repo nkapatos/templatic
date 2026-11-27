@@ -1,19 +1,20 @@
 package components
 
 import (
+	"strconv"
+
 	"github.com/nkapatos/templatic/ui"
 )
 
-// Room is a room's page: its chat, the post form and the activity log.
-// name prefills the name field; failed is ui.Failed after a refused no-JS
-// POST, else nil.
-templ Room(room string, messages []Message, events []Event, name string, failed ui.Option) {
+// Room is a room's page: its chat and the activity log, each a collection
+// that renders its own container, and the post form. name prefills the name
+// field; failed is ui.Failed after a refused no-JS POST, else nil.
+templ Room(room string, chat, activity templ.Component, name string, failed ui.Option) {
 	@Layout("#"+room, room) {
 		<div class="cols">
 			<section>
 				<h1>#{ room }</h1>
-				// The region around the stream is what a reconnect replays into.
-				@Chat.For(room).Region(messages)
+				@chat
 				<div { ui.Hook("clear-on-ok", Post.Name())... }>
 					@ui.FormFor(Post, "/rooms/"+room+"/messages", failed, ui.Class("post")) {
 						<input type="hidden" name="room" value={ room }/>
@@ -34,31 +35,34 @@ templ Room(room string, messages []Message, events []Event, name string, failed 
 			</section>
 			<aside>
 				<h2>Activity</h2>
-				@ui.Region(ActivityTopic, Activity(events))
+				@activity
 			</aside>
 		</div>
 	}
 }
 
-// MessageView is one chat line, inside its stream item wrapper.
+// MessageView is one chat line, inside the <li> its collection renders, with
+// a like and a delete form: both work with and without JavaScript.
 templ MessageView(m Message) {
 	<time>{ m.At.Format("15:04:05") }</time>
 	<strong>{ m.Author }</strong>
 	<span>{ m.Text }</span>
-}
-
-// Activity is the activity log's stream container, newest first.
-templ Activity(events []Event) {
-	@ui.Stream(ActivityTopic, activityItems(events))
-}
-
-templ activityItems(events []Event) {
-	for _, e := range events {
-		@ui.StreamItem(e.Key(), EventView(e), ui.Class(e.Kind))
+	@ui.FormFor(Like, messageURL(m)+"/like", ui.Class("act")) {
+		@messageFields(m)
+		<button type="submit" aria-label="Like">♥ { strconv.Itoa(m.Likes) }</button>
+	}
+	@ui.FormFor(Delete, messageURL(m)+"/delete", ui.Class("act")) {
+		@messageFields(m)
+		<button type="submit" aria-label="Delete">✕</button>
 	}
 }
 
-// EventView is one activity line, inside its stream item wrapper.
+templ messageFields(m Message) {
+	<input type="hidden" name="room" value={ m.Room }/>
+	<input type="hidden" name="id" value={ m.Key() }/>
+}
+
+// EventView is one activity line, inside the <li> its collection renders.
 templ EventView(e Event) {
 	<time>{ e.At.Format("15:04:05") }</time>
 	{ e.Text }

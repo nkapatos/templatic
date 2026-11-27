@@ -21,16 +21,11 @@ type Message struct {
 	Author string
 	Text   string
 	At     time.Time
+	Likes  int
 }
 
-// Key is the message's stream item key, unique across rooms.
+// Key is the message's item key, unique across rooms.
 func (m Message) Key() string { return "m" + strconv.Itoa(m.ID) }
-
-// Chat is one stream per room; new messages land at the bottom.
-var Chat = live.DeclareStreamFamily[Message]("chat").
-	Key(Message.Key).
-	Renders(MessageView).
-	Tail()
 
 // PostIn is Post's input, from either transport.
 type PostIn struct {
@@ -66,6 +61,26 @@ func (in PostIn) Validate() error {
 // Post adds a message to a room.
 var Post = live.NewCommand[PostIn]("chat.post")
 
+// MessageIn names one message, for Like and Delete.
+type MessageIn struct {
+	Room string `json:"room"`
+	ID   string `json:"id"`
+}
+
+// Validate refuses an unknown room or an empty id.
+func (in MessageIn) Validate() error {
+	if !slices.Contains(Rooms, in.Room) || in.ID == "" {
+		return live.Invalid("", "no such message")
+	}
+	return nil
+}
+
+// Like adds a like to a message: an update of an item already on the page.
+var Like = live.NewCommand[MessageIn]("chat.like")
+
+// Delete removes a message from its room on every page.
+var Delete = live.NewCommand[MessageIn]("chat.delete")
+
 // Event is one line of the activity log.
 type Event struct {
 	ID   int
@@ -74,8 +89,10 @@ type Event struct {
 	At   time.Time
 }
 
-// Key is the event's stream item key.
+// Key is the event's item key.
 func (e Event) Key() string { return "e" + strconv.Itoa(e.ID) }
 
-// ActivityTopic is the activity log's stream topic.
+// ActivityTopic is the activity log's collection topic.
 const ActivityTopic = "activity"
+
+func messageURL(m Message) string { return "/rooms/" + m.Room + "/messages/" + m.Key() }
