@@ -43,11 +43,6 @@ func main() {
 		v := components.ParseView(r.URL.Query())
 		templ.Handler(components.Page(v)).ServeHTTP(rw, r)
 	})
-	// The search form without JS: redirect to the URL of the View it names.
-	mux.Handle("POST /search", components.Navigate.FormPOST(w,
-		func(r *http.Request, in components.View) (string, error) {
-			return in.Clean().URL(), nil
-		}, nil))
 	w.Mount(mux, "/live")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("public"))))
 	mux.Handle("GET /_templatic/", http.StripPrefix("/_templatic/", templatic.Assets(distDir)))

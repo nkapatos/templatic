@@ -6,11 +6,6 @@ import (
 	"github.com/nkapatos/templatic/live"
 )
 
-// SearchRegion is the session region rendered by Search (//templatic:region).
-var SearchRegion = live.DeclareSessionRegion[View](SearchTopic)
-
-func init() { SearchRegion.Renders(Search) }
-
 // TableRegion is the session region rendered by Table (//templatic:region).
 var TableRegion = live.DeclareSessionRegion[Result](TableTopic)
 

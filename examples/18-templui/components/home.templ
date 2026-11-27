@@ -1,0 +1,27 @@
+package components
+
+import (
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// failed is nil on a plain render, ui.Failed(r, err) after a refused
+// no-JS POST: the form then shows what was typed and why it was refused.
+templ Home(count *live.Cell[int], failed ui.Option) {
+	@Layout("templui") {
+		<h1>templui</h1>
+		// A cell binding: every open page updates in place when it changes.
+		<p>Count: <strong>@ui.Cell(count)</strong></p>
+		// One command, two transports: with JS the runtime sends the
+		// fields to Add; without JS the browser POSTs them to /add. Both
+		// decode into AddIn the same way.
+		@ui.FormFor(Add, "/add", failed) {
+			<label>
+				Step
+				<input name="n" type="number" value={ ui.FieldValue(ctx, "n", "1") } { ui.Hook("autofocus", nil)... }/>
+			</label>
+			@ui.FieldError("n")
+			<button type="submit">Add</button>
+		}
+	}
+}

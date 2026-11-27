@@ -74,7 +74,7 @@ func Home(p Page, tip int) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = TipCard.Render(tip).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = TipCardRegion.Render(tip).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -219,9 +219,11 @@ func helpBody() templ.Component {
 	})
 }
 
-// The id differs per tip, so a swap inserts a new card instead of morphing
-// the old one: the menu hook mounts on the new element.
-func tipCard(n int) templ.Component {
+// TipCard is tip n's card. The id differs per tip, so a swap inserts a new
+// card instead of morphing the old one: the menu hook mounts on it.
+//
+//templatic:region topic-of=tipTopic
+func TipCard(n int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -245,7 +247,7 @@ func tipCard(n int) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression("tip-" + strconv.Itoa(n)).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 59, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 60, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -258,7 +260,7 @@ func tipCard(n int) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(tips[n].Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 61, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 62, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -297,7 +299,7 @@ func tipCard(n int) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(TipURL(n))).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 65, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 66, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
@@ -310,7 +312,7 @@ func tipCard(n int) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(tips[n].Body)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 70, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/pages.templ`, Line: 71, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {

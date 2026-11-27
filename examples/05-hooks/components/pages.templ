@@ -17,7 +17,7 @@ templ Home(p Page, tip int) {
 		// the same content as a modal dialog.
 		<p><a href="/help" { ui.Hook("dialog", DialogArgs{ID: "help-dialog"})... }>Open help</a></p>
 		// Render paints the region marker with the first tip inside.
-		@TipCard.Render(tip)
+		@TipCardRegion.Render(tip)
 		<dialog id="help-dialog" aria-labelledby="help-title">
 			<div class="dialog-body">
 				<h2 id="help-title">Help</h2>
@@ -53,9 +53,10 @@ templ helpBody() {
 	</ul>
 }
 
-// The id differs per tip, so a swap inserts a new card instead of morphing
-// the old one: the menu hook mounts on the new element.
-templ tipCard(n int) {
+// TipCard is tip n's card. The id differs per tip, so a swap inserts a new
+// card instead of morphing the old one: the menu hook mounts on it.
+//templatic:region topic-of=tipTopic
+templ TipCard(n int) {
 	<article class="tip" id={ "tip-" + strconv.Itoa(n) }>
 		<header>
 			<h2>{ tips[n].Title }</h2>

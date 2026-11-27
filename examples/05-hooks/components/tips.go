@@ -29,12 +29,8 @@ func (in TipIn) Validate() error {
 	return nil
 }
 
-// tipTopic is a constant, not TipCard.Topic(): the card renders a ShowTip
-// link, so the two declarations referring to each other is an init cycle.
+// tipTopic is the topic of the tip card session region (TipCardRegion).
 const tipTopic = "tip"
-
-// TipCard is the session region the tips card lives in.
-var TipCard = live.DeclareSessionRegion[int](tipTopic).Renders(tipCard)
 
 // ShowTip swaps the tips card to another tip, for this page only.
 var ShowTip = live.NewCommand[TipIn]("tip.show").Swaps(tipTopic)

@@ -1,3 +1,4 @@
-// The app entry: loaded on every page. This example has no client code;
-// importing the stylesheet is what puts it in the bundle.
+// The app entry: loaded on every page. The search hook and the stylesheet
+// are what this example bundles.
+import "./search";
 import "./app.css";

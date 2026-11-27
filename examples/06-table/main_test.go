@@ -54,7 +54,4 @@ func TestUpdateKeepsEachSessionsView(t *testing.T) {
 	if got := b.WaitSwap(components.TableTopic, "Page 1 of", time.Second); !strings.Contains(got, `aria-sort="descending" class="col-amount"`) {
 		t.Error("session b lost the sort its page was loaded with")
 	}
-	if _, ok := a.LastSwap(components.SearchTopic); ok {
-		t.Error("the refresh swapped the search form")
-	}
 }

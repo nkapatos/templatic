@@ -1,0 +1,16 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; color: #1d2421; }
+nav { display: flex; gap: 1rem; border-bottom: 1px solid #d6ddd9; padding-bottom: 1rem; }
+.queue { list-style: none; padding: 0; }
+.queue li { display: flex; align-items: center; gap: .75rem; padding: .5rem .75rem; margin-bottom: .25rem; border: 1px solid #d6ddd9; border-radius: .375rem; background: #fff; }
+.queue .title { flex: 1; }
+.queue .grip { cursor: grab; color: #6b7570; user-select: none; }
+.queue .sortable-ghost { opacity: .4; }
+.queue form { display: flex; gap: .25rem; }
+.stats { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1.5rem; font-variant-numeric: tabular-nums; }
+.stats dt { color: #6b7570; }
+.stats dd { margin: 0; }
+place-map { display: block; }
+place-map .map { height: 24rem; background: #eef2f0; }
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+caption { text-align: left; color: #6b7570; }
+th, td { padding: .125rem 1rem .125rem 0; text-align: left; }

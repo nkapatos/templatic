@@ -19,12 +19,8 @@ type Order struct {
 	Updated  time.Time
 }
 
-// TableTopic and SearchTopic are the topics of the table and search form
-// session regions.
-const (
-	TableTopic  = "orders"
-	SearchTopic = "orders.search"
-)
+// TableTopic is the topic of the table session region.
+const TableTopic = "orders"
 
 // PageSize is how many rows one page shows.
 const PageSize = 20
@@ -57,8 +53,8 @@ type Result struct {
 	Fresh time.Time // rows updated at this time changed in the latest tick
 }
 
-// Navigate moves a viewer to a View; its handler swaps the search and table
-// regions and declares the View's URL.
+// Navigate moves a viewer to a View; its handler swaps the table region and
+// declares the View's URL.
 var Navigate = live.NewCommand[View]("orders.view").Swaps(TableTopic)
 
 // ParseView reads a View from a URL query; unknown or missing values fall

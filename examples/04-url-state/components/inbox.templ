@@ -9,6 +9,13 @@ templ Page(v View) {
 			The tab, the search and the open item live in the address bar.
 			Copy it, reload it or go back: the page comes back the same.
 		</p>
+		// Outside the region, so a swap never morphs what is being typed.
+		// Without JS it GETs this page; with JS the search hook raises Navigate.
+		<form class="search" method="get" action="/" { ui.Hook("search", nil)... }>
+			<input type="hidden" name="tab" value={ v.Tab }/>
+			<input type="search" name="q" value={ v.Q } placeholder="Search titles" aria-label="Search titles"/>
+			<button type="submit">Search</button>
+		</form>
 		// First paint of the region; Navigate's handler swaps it later.
 		@InboxRegion.Render(v)
 	}
@@ -20,18 +27,6 @@ templ Inbox(v View) {
 		@tab(v, "open", "Open")
 		@tab(v, "done", "Done")
 	</nav>
-	// With JS the submit raises Navigate; without JS it POSTs to /search,
-	// which redirects to the View's URL.
-	@ui.FormFor(Navigate, "/search", ui.Class("search")) {
-		<input type="hidden" name="tab" value={ v.Tab }/>
-		<input type="search" name="q" value={ v.Q } placeholder="Search titles" aria-label="Search titles"/>
-		<button type="submit">Search</button>
-		if v.Q != "" {
-			@ui.Link(Navigate, View{Tab: v.Tab}, View{Tab: v.Tab}.URL()) {
-				Clear
-			}
-		}
-	}
 	<div class="panes">
 		<ul class="list">
 			for _, it := range Listed(v.Tab, v.Q) {

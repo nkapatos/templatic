@@ -54,11 +54,6 @@ func main() {
 		res := st.Query(components.ParseView(r.URL.Query()))
 		templ.Handler(components.Page(t.rows, t.last, res)).ServeHTTP(rw, r)
 	})
-	// The search form without JS: redirect to the URL of the View it names.
-	mux.Handle("POST /search", components.Navigate.FormPOST(w,
-		func(r *http.Request, in components.View) (string, error) {
-			return in.Clean().URL(), nil
-		}, nil))
 	w.Mount(mux, "/live")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("public"))))
 	mux.Handle("GET /_templatic/", http.StripPrefix("/_templatic/", templatic.Assets(distDir)))
@@ -94,15 +89,11 @@ func newTable(w *live.World, st *store) *table {
 	return t
 }
 
-// navigate swaps the search form and the table for this session only,
-// remembers the view for later refreshes and declares the URL the session is
-// now at.
+// navigate swaps the table for this session only, remembers the view for
+// later refreshes and declares the URL the session is now at.
 func (t *table) navigate(s *live.Session, in components.View) (any, error) {
 	res := t.st.Query(in.Clean())
 	viewOf.Set(s, res.View)
-	if err := components.SearchRegion.Swap(s, res.View); err != nil {
-		return nil, err
-	}
 	if err := components.TableRegion.Swap(s, res); err != nil {
 		return nil, err
 	}

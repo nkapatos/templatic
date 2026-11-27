@@ -15,27 +15,17 @@ templ Page(rows *live.Cell[int], last *live.Cell[string], r Result) {
 			The server changes a few orders every few seconds; your page, sort and
 			search stay as they are.
 		</p>
-		// First paint of the regions. Navigate swaps both; the refresh loop
-		// swaps only the table, so it never touches what is being typed.
-		@SearchRegion.Render(r.View)
+		// Outside the region, so neither a swap nor a refresh morphs what is
+		// being typed. Without JS it GETs this page; with JS the search hook
+		// raises Navigate.
+		<form class="search" method="get" action="/" { ui.Hook("search", nil)... }>
+			<input type="hidden" name="sort" value={ r.View.Sort }/>
+			<input type="hidden" name="dir" value={ r.View.Dir }/>
+			<input type="search" name="q" value={ r.View.Q } placeholder="Customer or order number" aria-label="Search orders"/>
+			<button type="submit">Search</button>
+		</form>
+		// First paint of the region; Navigate and the refresh loop swap it.
 		@TableRegion.Render(r)
-	}
-}
-
-//templatic:region topic-of=SearchTopic
-templ Search(v View) {
-	// With JS the submit raises Navigate; without JS it POSTs to /search,
-	// which redirects to the View's URL.
-	@ui.FormFor(Navigate, "/search", ui.Class("search")) {
-		<input type="hidden" name="sort" value={ v.Sort }/>
-		<input type="hidden" name="dir" value={ v.Dir }/>
-		<input type="search" name="q" value={ v.Q } placeholder="Customer or order number" aria-label="Search orders"/>
-		<button type="submit">Search</button>
-		if v.Q != "" {
-			@ui.Link(Navigate, View{Sort: v.Sort, Dir: v.Dir}.Clean(), View{Sort: v.Sort, Dir: v.Dir}.Clean().URL()) {
-				Clear
-			}
-		}
 	}
 }
 

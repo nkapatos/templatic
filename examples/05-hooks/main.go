@@ -35,7 +35,7 @@ func main() {
 	// The one server round-trip on the page: the next tip is swapped into
 	// this page's card, and the URL follows it.
 	components.ShowTip.Handle(w, func(s *live.Session, in components.TipIn) (any, error) {
-		if err := components.TipCard.Swap(s, in.N); err != nil {
+		if err := components.TipCardRegion.Swap(s, in.N); err != nil {
 			return nil, err
 		}
 		return live.At(components.TipURL(in.N)), nil
