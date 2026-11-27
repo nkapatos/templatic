@@ -12,8 +12,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/a-h/templ"
 )
 
 var testKey = []byte("0123456789abcdef0123456789abcdef")
@@ -296,7 +294,8 @@ func TestClientReportedURLReachesTheSession(t *testing.T) {
 
 func TestReconnectMarkerWorksWithoutLastEventID(t *testing.T) {
 	w := NewWorld(WithKey(testKey))
-	w.Stream("drops.list", func() templ.Component { return htmlComp("<i>truth</i>") })
+	resumed := make(chan struct{}, 1)
+	w.OnResume(func(*Session) { resumed <- struct{}{} })
 	ts := serveWorld(t, w)
 	tok := w.PageToken(nil)
 	a := openToken(t, ts, tok, nil)
@@ -304,9 +303,10 @@ func TestReconnectMarkerWorksWithoutLastEventID(t *testing.T) {
 	drop(t, w, claimsOf(t, w, tok).SID, a)
 	b := openToken2(t, ts, "t="+url.QueryEscape(tok)+"&r=1", nil)
 	readUntilReady(t, b)
-	f, ok := b.next(t, 2*time.Second)
-	if !ok || !strings.Contains(f, "truth") {
-		t.Fatalf("r=1 must trigger the stream catch-up: %q", f)
+	select {
+	case <-resumed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("r=1 must reattach the held session as a resume")
 	}
 	c := openToken2(t, ts, "t="+url.QueryEscape(w.PageToken(nil))+"&r=1", nil)
 	if f, ok := c.next(t, 2*time.Second); !ok || !strings.Contains(f, `"kind":"resync"`) {
