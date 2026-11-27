@@ -10,7 +10,7 @@ let tc: typeof import("../ts/tc");
 
 const PAGE = `
 <div data-tc-region="panel"><p>old</p></div>
-<div data-tc-region="drops"><div data-tc-stream="drops.list"><div data-tc-item="a">A</div></div></div>
+<div data-tc-collection="drops.list" data-tc-ver="1"><div data-tc-item="a">A</div></div>
 <span data-tc-cell="note.open">n1</span>
 `;
 
@@ -72,18 +72,14 @@ describe("resume", () => {
 		expect(st.events.slice(-2).map((e) => e.type)).toEqual(["disconnect", "resume"]);
 	});
 
-	test("a stream append missed while torn arrives as the catch-up swap of the stream's full content", async () => {
+	test("ops missed while torn arrive after the reconnect and apply from the version the page holds", async () => {
 		const first = connected();
 		first.open();
 		first.frame({ kind: "ready" });
 		const es = await tear(first);
 		es.open();
 		es.frame({ kind: "ready" });
-		es.frame({
-			kind: "swap",
-			topic: "drops",
-			html: `<div data-tc-stream="drops.list"><div data-tc-item="b">B</div><div data-tc-item="a">A</div></div>`,
-		});
+		es.frame({ kind: "ops", topic: "drops.list", ver: 3, ops: [{ op: "u", k: "a", html: `<div data-tc-item="a">A</div>` }, { op: "u", k: "b", html: `<div data-tc-item="b">B</div>` }] });
 		await settle();
 		expect([...document.querySelectorAll("[data-tc-item]")].map((e) => e.getAttribute("data-tc-item"))).toEqual(["b", "a"]);
 	});

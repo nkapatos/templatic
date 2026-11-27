@@ -121,12 +121,6 @@ export interface TcEvents {
         el: Element;
     };
     // (undocumented)
-    append: {
-        topic: string;
-        key: string;
-        el: Element;
-    };
-    // (undocumented)
     cell: {
         topic: string;
         value: unknown;
@@ -138,6 +132,12 @@ export interface TcEvents {
     };
     // (undocumented)
     disconnect: undefined;
+    item: {
+        topic: string;
+        key: string;
+        el: Element;
+        change: "insert" | "update" | "remove" | "reset";
+    };
     // (undocumented)
     nav: {
         url: string;

@@ -1,5 +1,6 @@
 import { Idiomorph } from "idiomorph";
 
+import { applyOps, applyReset, forget, type GapHandler, type Op } from "./collections";
 import { abandonPending } from "./commands";
 import { applyDev, type DevFrame } from "./dev";
 import { morphCallbacks, scanHooks } from "./hooks";
@@ -11,64 +12,70 @@ export interface WireEvent {
 	topic?: string;
 	v?: unknown;
 	html?: string;
-	items?: StreamItem[];
+	/** ver is the collection version after an ops batch, or of a reset. */
+	ver?: number;
+	ops?: Op[];
 	what?: string;
 	css?: Record<string, string>;
 	message?: string;
 }
 
-/** StreamItem is one keyed item of an append event; keys obey the topic grammar, so they are safe in selectors. */
-export interface StreamItem {
-	k: string;
-	html: string;
-}
+/** SwappedCallback is told which region was swapped or which collection container changed. */
+export type SwappedCallback = (root: Element) => void;
 
-/** SwappedCallback is told which region was swapped or appended to. */
-export type SwappedCallback = (region: Element) => void;
-
-const pendingCells = new Map<string, unknown>();
-const pendingSwaps = new Map<string, string>();
-const pendingAppends = new Map<string, StreamItem[]>();
+// Arrival order, so a swap and a later op on a container inside it apply in that order (#43).
+let pending: WireEvent[] = [];
 let swappedCallback: SwappedCallback | null = null;
-let morphing: Promise<void> = Promise.resolve();
 let flushScheduled = false;
 
-/** onSwapped sets the callback run after a region swap or append. */
+// Until catch-up exists, a container that missed ops cannot be trusted: reload, as a resync does.
+let gapHandler: GapHandler = () => {
+	recordLive("resync");
+	abandonPending();
+	location.reload();
+};
+
+/** onSwapped sets the callback run after a region swap or a collection change. */
 export function onSwapped(fn: SwappedCallback): void {
 	swappedCallback = fn;
 }
 
-/** apply queues a wire event; cell, swap and append are flushed per animation frame. */
+/** onCollectionGap sets what runs when a collection container missed ops. */
+export function onCollectionGap(fn: GapHandler): void {
+	gapHandler = fn;
+}
+
+/** apply queues a wire event; cell, swap, ops and reset are flushed per animation frame, in arrival order. */
 export function apply(ev: WireEvent): void {
 	switch (ev.kind) {
 		case "cell":
-			if (ev.topic) pendingCells.set(ev.topic, ev.v);
-			scheduleFlush();
+			if (!ev.topic) return;
 			break;
 		case "swap":
-			if (ev.topic && typeof ev.html === "string") pendingSwaps.set(ev.topic, ev.html);
-			scheduleFlush();
+			if (!ev.topic || typeof ev.html !== "string") return;
 			break;
-		case "append":
-			// items arrive oldest-first
-			if (ev.topic && Array.isArray(ev.items)) {
-				const list = pendingAppends.get(ev.topic) ?? [];
-				pendingAppends.set(ev.topic, list.concat(ev.items));
-			}
-			scheduleFlush();
+		case "ops":
+			if (!ev.topic || typeof ev.ver !== "number" || !Array.isArray(ev.ops)) return;
+			break;
+		case "reset":
+			if (!ev.topic || typeof ev.ver !== "number" || typeof ev.html !== "string") return;
 			break;
 		case "ready":
 			markReady();
-			break;
+			return;
 		case "resync":
 			recordLive("resync");
 			abandonPending();
 			location.reload();
-			break;
+			return;
 		case "dev":
 			applyDev(ev as DevFrame);
-			break;
+			return;
+		default:
+			return;
 	}
+	pending.push(ev);
+	scheduleFlush();
 }
 
 function scheduleFlush(): void {
@@ -76,59 +83,55 @@ function scheduleFlush(): void {
 	flushScheduled = true;
 	requestAnimationFrame(() => {
 		flushScheduled = false;
-		void flush();
+		flush();
 	});
 }
 
-async function flush(): Promise<void> {
-	// A throwing tcBind must neither block later topics nor leave the map uncleared (it would re-throw every frame).
-	if (pendingCells.size > 0) {
-		const cells = [...pendingCells];
-		pendingCells.clear();
-		for (const [topic, value] of cells) {
-			try {
-				// the latch re-seeds island subscribers whose chunk loads later
-				setLatestCell(topic, value);
-				for (const el of document.querySelectorAll(`[data-tc-cell="${topic}"]`)) {
-					el.textContent = renderValue(value);
-				}
-				for (const el of document.querySelectorAll("[data-tc-a]")) {
-					applyCellAttrs(el, topic, value);
-				}
-				deliverBinds(topic, value);
-				emit("cell", { topic, value });
-			} catch (err) {
-				console.error(`tc: cell delivery failed for ${topic} — later updates still apply`, err);
-				tcPhase("live", err);
+// A throwing tcBind, morph or hook must neither block later events nor stay queued (it would re-throw every frame).
+function flush(): void {
+	const batch = pending;
+	pending = [];
+	// cells and swaps are latest-wins: one superseded by a later one of its kind and topic is skipped
+	const last = new Map<string, number>();
+	batch.forEach((ev, i) => {
+		if (ev.kind === "cell" || ev.kind === "swap") last.set(`${ev.kind}\0${ev.topic}`, i);
+	});
+	batch.forEach((ev, i) => {
+		const topic = ev.topic!;
+		if ((ev.kind === "cell" || ev.kind === "swap") && last.get(`${ev.kind}\0${topic}`) !== i) return;
+		try {
+			switch (ev.kind) {
+				case "cell":
+					deliverCell(topic, ev.v);
+					break;
+				case "swap":
+					morph(topic, ev.html!);
+					break;
+				case "ops":
+					for (const c of applyOps(topic, ev.ver!, ev.ops!, gapHandler)) swappedCallback?.(c);
+					break;
+				case "reset":
+					for (const c of applyReset(topic, ev.ver!, ev.html!)) swappedCallback?.(c);
+					break;
 			}
+		} catch (err) {
+			console.error(`tc: ${ev.kind} failed for ${topic} — later updates still apply; window.tcState() carries the record`, err);
+			tcPhase("live", err);
 		}
+	});
+}
+
+function deliverCell(topic: string, value: unknown): void {
+	// the latch re-seeds island subscribers whose chunk loads later
+	setLatestCell(topic, value);
+	for (const el of document.querySelectorAll(`[data-tc-cell="${topic}"]`)) {
+		el.textContent = renderValue(value);
 	}
-	if (pendingAppends.size > 0) {
-		const appends = [...pendingAppends];
-		pendingAppends.clear();
-		for (const [topic, items] of appends) {
-			try {
-				applyAppends(topic, items);
-			} catch (err) {
-				console.error(`tc: append failed for ${topic} — later updates still apply`, err);
-				tcPhase("live", err);
-			}
-		}
+	for (const el of document.querySelectorAll("[data-tc-a]")) {
+		applyCellAttrs(el, topic, value);
 	}
-	for (const topic of [...pendingSwaps.keys()]) {
-		if (document.querySelector(`[data-tc-region="${topic}"]`)) continue;
-		pendingSwaps.delete(topic);
-	}
-	if (pendingSwaps.size > 0) {
-		// Serialized so mutation records cannot interleave; a rejected morph must not poison later swaps.
-		morphing = morphing
-			.then(() => morphAll())
-			.catch((err: unknown) => {
-				console.error("tc: swap morph failed — later swaps still apply; window.tcState() carries the record", err);
-				tcPhase("live", err);
-			});
-		await morphing;
-	}
+	deliverBinds(topic, value);
+	emit("cell", { topic, value });
 }
 
 // tcBind is duck-typed: only bound islands define it, and an un-upgraded host is re-seeded from the latch on load.
@@ -141,48 +144,21 @@ function deliverBinds(topic: string, value: unknown): void {
 	}
 }
 
-// Keys already present are skipped (double delivery, catch-up); data-tc-dir="tail" appends at the tail, else the head.
-function applyAppends(topic: string, items: StreamItem[]): void {
-	const container = document.querySelector(`[data-tc-stream="${topic}"]`);
-	if (!container) return;
-	const tail = container.getAttribute("data-tc-dir") === "tail";
-	const added: Array<{ key: string; el: Element }> = [];
-	for (const item of items) {
-		if (container.querySelector(`[data-tc-item="${item.k}"]`)) continue;
-		const tpl = document.createElement("template");
-		tpl.innerHTML = item.html;
-		const node = tpl.content.firstElementChild;
-		if (node) {
-			if (tail) {
-				container.append(node);
-			} else {
-				container.prepend(node);
-			}
-			added.push({ key: item.k, el: node });
-		}
+function morph(topic: string, html: string): void {
+	const region = document.querySelector(`[data-tc-region="${topic}"]`);
+	if (!region) return;
+	emit("swap:before", { topic, el: region });
+	// idiomorph soft-matches a same-position host and would morph the payload's placeholder
+	// into the island's live DOM, destroying its state; remove hosts so the payload's land fresh.
+	for (const host of region.querySelectorAll("[data-tc-island]")) {
+		host.replaceWith(document.createComment("tc-island"));
 	}
-	for (const a of added) scanHooks(a.el);
-	swappedCallback?.(container);
-	for (const a of added) emit("append", { topic, key: a.key, el: a.el });
-}
-
-function morphAll(): void {
-	for (const [topic, html] of pendingSwaps) {
-		pendingSwaps.delete(topic);
-		const region = document.querySelector(`[data-tc-region="${topic}"]`);
-		if (!region) continue;
-		emit("swap:before", { topic, el: region });
-		// idiomorph soft-matches a same-position host and would morph the payload's placeholder
-		// into the island's live DOM, destroying its state; remove hosts so the payload's land fresh.
-		for (const host of region.querySelectorAll("[data-tc-island]")) {
-			host.replaceWith(document.createComment("tc-island"));
-		}
-		// innerHTML keeps the region marker; outerHTML would replace it and the next swap would find nothing.
-		Idiomorph.morph(region, html, { morphStyle: "innerHTML", callbacks: morphCallbacks });
-		scanHooks(region);
-		swappedCallback?.(region);
-		emit("swap:after", { topic, el: region });
-	}
+	// innerHTML keeps the region marker; outerHTML would replace it and the next swap would find nothing.
+	Idiomorph.morph(region, html, { morphStyle: "innerHTML", callbacks: morphCallbacks });
+	forget(region);
+	scanHooks(region);
+	swappedCallback?.(region);
+	emit("swap:after", { topic, el: region });
 }
 
 // The Go allowlist is re-checked so hand-written markup cannot turn a cell into a URL, style or script sink.

@@ -119,9 +119,11 @@ function upsert(topic: string, container: Element, op: Op): void {
 /**
  * applyOps applies a batch ending at version ver to every container of topic. Ops a container already holds are
  * skipped; a batch that starts past a container's next version is not applied there and onGap is told instead.
+ * It returns the containers it changed.
  */
-export function applyOps(topic: string, ver: number, ops: Op[], onGap: GapHandler): void {
+export function applyOps(topic: string, ver: number, ops: Op[], onGap: GapHandler): Element[] {
 	const first = ver - ops.length + 1;
+	const changed: Element[] = [];
 	for (const container of containers(topic)) {
 		const local = version(container);
 		if (local >= 0 && first > local + 1) {
@@ -140,15 +142,19 @@ export function applyOps(topic: string, ver: number, ops: Op[], onGap: GapHandle
 		}
 		trim(topic, container);
 		container.setAttribute(VER, String(ver));
+		changed.push(container);
 	}
+	return changed;
 }
 
 /**
  * applyReset makes every container of topic hold exactly the items in html, at version ver. Items it already holds
- * are morphed in place and moved only when out of order, so a focused item keeps its focus and typed value.
+ * are morphed in place and moved only when out of order, so a focused item keeps its focus and typed value. It
+ * returns the containers it changed.
  */
-export function applyReset(topic: string, ver: number, html: string): void {
-	for (const container of containers(topic)) {
+export function applyReset(topic: string, ver: number, html: string): Element[] {
+	const changed = containers(topic);
+	for (const container of changed) {
 		const tpl = document.createElement("template");
 		tpl.innerHTML = html;
 		const next = [...tpl.content.children].filter((el) => el.hasAttribute(ITEM));
@@ -185,4 +191,5 @@ export function applyReset(topic: string, ver: number, html: string): void {
 		scanHooks(container);
 		emit("item", { topic, key: "", el: container, change: "reset" });
 	}
+	return changed;
 }

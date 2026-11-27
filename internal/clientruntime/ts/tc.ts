@@ -238,7 +238,6 @@ export interface TcEvents {
 	resync: undefined;
 	"swap:before": { topic: string; el: Element };
 	"swap:after": { topic: string; el: Element };
-	append: { topic: string; key: string; el: Element };
 	/** item fires per collection item changed; a reset fires once with the container as el and an empty key. */
 	item: { topic: string; key: string; el: Element; change: "insert" | "update" | "remove" | "reset" };
 	cell: { topic: string; value: unknown };
