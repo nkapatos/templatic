@@ -13,8 +13,14 @@ export function registerEntries(m: Manifest, baseURL: string): void {
 	}
 }
 
+// linkCSS links an entry's CSS that the page does not link yet: Head already
+// links what the rendered page uses.
 function linkCSS(name: string): void {
+	const linked = new Set(
+		Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'), (l) => l.href),
+	);
 	for (const href of entryCSS.get(name) ?? []) {
+		if (linked.has(href)) continue;
 		const link = document.createElement("link");
 		link.rel = "stylesheet";
 		link.href = href;
