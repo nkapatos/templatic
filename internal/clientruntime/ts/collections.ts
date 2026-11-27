@@ -21,7 +21,13 @@ const ITEM = "data-tc-item";
 const indexes = new WeakMap<Element, Map<string, Element>>();
 
 // The focused field keeps what the user typed; the server's value lands once it loses focus.
-const morphOptions = { callbacks: morphCallbacks, ignoreActiveValue: true };
+// idiomorph's ignoreActiveValue skips the focused element's children too, so it is set only when the focused
+// element holds a typed value: a focused button or link still re-renders.
+function morphOptions() {
+	const a = document.activeElement;
+	const typed = a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement;
+	return { callbacks: morphCallbacks, ignoreActiveValue: typed, morphStyle: "outerHTML" as const };
+}
 
 /** forget drops the item indexes of containers under root (root included), after a morph rewrote them. */
 export function forget(root: Element): void {
@@ -101,7 +107,7 @@ function upsert(topic: string, container: Element, op: Op): void {
 	if (old) {
 		dropIslands(old);
 		// a parsed node, not the string: idiomorph's own parse would drop a <tr> or <li> root
-		Idiomorph.morph(old, fresh, { ...morphOptions, morphStyle: "outerHTML" });
+		Idiomorph.morph(old, fresh, morphOptions());
 		const el = lookup(container, op.k);
 		if (!el) return;
 		scanHooks(el);
@@ -172,7 +178,7 @@ export function applyReset(topic: string, ver: number, html: string): Element[] 
 				const wasCursor = el === cursor;
 				const before = el.previousSibling;
 				dropIslands(el);
-				Idiomorph.morph(el, fresh, { ...morphOptions, morphStyle: "outerHTML" });
+				Idiomorph.morph(el, fresh, morphOptions());
 				// a morph that changes the root's tag replaces the node in place
 				if (!el.isConnected) el = (before ? before.nextSibling : container.firstChild) as Element;
 				if (wasCursor) cursor = el;
