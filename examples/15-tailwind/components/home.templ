@@ -1,0 +1,54 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// Home shows the count, the level region and the Add form; failed is nil
+// on a plain render and ui.Failed after a refused no-JS POST.
+templ Home(count *live.Cell[int], level *live.Region, failed ui.Option) {
+	@Layout("tailwind") {
+		<h1 class="text-3xl font-bold tracking-tight text-slate-900">Tailwind</h1>
+		<p class="mt-4 text-lg text-slate-700">
+			Count:
+			<strong class="font-mono text-4xl text-indigo-600">
+				@ui.Cell(count)
+			</strong>
+		</p>
+		<div class="mt-4">
+			@level
+		</div>
+		@ui.FormFor(Add, "/add", failed, ui.Class("mt-6 flex items-end gap-3")) {
+			<label class="flex flex-col text-sm font-medium text-slate-700">
+				Step
+				<input
+					name="n"
+					type="number"
+					value={ ui.FieldValue(ctx, "n", "1") }
+					class="mt-1 w-28 rounded-md border border-slate-300 px-3 py-2 aria-invalid:outline-2 aria-invalid:outline-red-600"
+				/>
+				<span class="mt-1 text-red-700">
+					@ui.FieldError("n")
+				</span>
+			</label>
+			<button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500">Add</button>
+		}
+	}
+}
+
+// Level is the region's markup: the green badge is rendered only once the
+// count reaches Goal, so a page loaded below it gets its classes by a swap.
+templ Level(n int) {
+	if n >= Goal {
+		<p class="inline-block rounded-full bg-emerald-600 px-3 py-1 text-sm font-semibold text-white ring-4 ring-emerald-200">
+			Goal reached
+		</p>
+	} else {
+		<p class="inline-block rounded-full bg-slate-200 px-3 py-1 text-sm text-slate-700">
+			{ strconv.Itoa(Goal-n) } to go
+		</p>
+	}
+}

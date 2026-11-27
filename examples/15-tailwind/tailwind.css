@@ -1,0 +1,7 @@
+/* Tailwind's input: `npm run css` compiles it to client/tailwind.out.css,
+   which client/app.ts imports. */
+
+/* source(none) turns off automatic detection: only the @source globs
+   below are scanned, never .templatic/, node_modules/ or *.md. */
+@import "tailwindcss" source(none);
+@source "./components/**/*.templ";

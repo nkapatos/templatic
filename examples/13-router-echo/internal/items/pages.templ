@@ -1,0 +1,37 @@
+package items
+
+import (
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+
+	"examples/router-echo/internal/page"
+)
+
+// List is the index page: every item with its live like count.
+templ List(items []Item, likes *live.CellFamily[int]) {
+	@page.Layout("Items") {
+		<h1>Items</h1>
+		<ul class="items">
+			for _, it := range items {
+				<li>
+					<a href={ "/items/" + it.ID }>{ it.Name }</a>
+					<span class="likes">@ui.Cell(likes.Get(it.ID)) likes</span>
+				</li>
+			}
+		</ul>
+	}
+}
+
+// Detail is one item's page, at /items/{id}.
+templ Detail(it Item, likes *live.Cell[int]) {
+	@page.Layout(it.Name) {
+		<h1>{ it.Name }</h1>
+		<p>{ it.Note }</p>
+		<p class="count">@ui.Cell(likes) likes</p>
+		@ui.FormFor(Like, "/items/"+it.ID+"/like") {
+			<input type="hidden" name="id" value={ it.ID }/>
+			<button type="submit">Like</button>
+		}
+		<p><a href="/">Back to the list</a></p>
+	}
+}

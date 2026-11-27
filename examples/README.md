@@ -18,6 +18,11 @@ directory with the commands in its README.
 | [10-testing](10-testing) | how an app tests its live pages: `livetest` for commands, cells, swaps and appends; a Playwright check with a TCP relay for reconnects |
 | [11-auth](11-auth) | login, per-user pages and admin-only commands: the user in the page token (`s.Params()`), an allowlisted cookie on commands, `http.CrossOriginProtection`, logout as a POST |
 | [12-production](12-production) | the dev loop and shipping: gzip that skips the stream, no-cache HTML, h2c behind a TLS proxy, timeouts above the heartbeat, `X-Forwarded-For`, graceful shutdown, sticky replicas, a Dockerfile |
+| [13-router-stdlib](13-router-stdlib) | one small app with a path value (`/items/{id}`), a cell family and a command, on `net/http`'s `ServeMux` (`World.Mount`); a feature package that hands out plain handlers |
+| [13-router-chi](13-router-chi) | the same app on chi: `SSE()` and `Commands()` mounted by hand |
+| [13-router-echo](13-router-echo) | the same app on echo v5: handlers through `echo.WrapHandler`, which sets the path values |
+| [14-bootstrap](14-bootstrap) | Bootstrap from npm through the bundle: data-API widgets across morphs, tooltips and popovers in hooks, stateful widgets outside live regions |
+| [15-tailwind](15-tailwind) | Tailwind as the app's own build step beside `templatic dev`: scanning `.templ` only, classes used only in live markup |
 
 ## Running one
 

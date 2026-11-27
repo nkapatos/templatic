@@ -1,0 +1,104 @@
+# 15 · tailwind
+
+A live count styled with Tailwind CSS v4. Tailwind's CLI is the app's own
+build step: an npm script compiles `tailwind.css` to
+`client/tailwind.out.css`, `client/app.ts` imports it, and templatic
+bundles and fingerprints it like any other CSS. templatic knows nothing
+about Tailwind ([design.md](../../design.md#rules), rule 2).
+
+```sh
+npm install
+npm run generate             # Tailwind, then templatic generate
+go run .                     # http://localhost:8080
+```
+
+Open it in two windows and add in one. At 10 the badge under the count
+turns green.
+
+## The dev loop
+
+`npm run dev` (or `mise run dev`) builds the CSS once, then runs two
+watchers side by side with
+[concurrently](https://www.npmjs.com/package/concurrently): Tailwind's
+`--watch` and `templatic dev -exec 'go run .'` with `TC_MODE=dev`.
+
+- **Why two watchers, not one.** `templatic dev` has a single `-exec`,
+  the app, which it restarts on every `.go` change; a Tailwind watcher
+  there would restart with it. The CSS step is the app's, so the app's
+  `package.json` runs it. concurrently prefixes both outputs and stops
+  both when either exits or on Ctrl-C.
+- **Why the CSS is built first.** `client/app.ts` imports
+  `client/tailwind.out.css`, which is generated and ignored by git. On a
+  fresh checkout the first `templatic dev` build would fail if it ran
+  before Tailwind's first write, so `dev` and `generate` both run
+  `npm run css` before templatic.
+- **How a change travels.** `templatic dev` watches `client/`, so every
+  write of `client/tailwind.out.css` rebuilds the bundle:
+  - editing `tailwind.css` (a theme value, a rule) recompiles the CSS, and
+    open pages swap the new stylesheet in place, without a reload;
+  - editing a class in a `.templ` file triggers both watchers: Tailwind
+    writes new CSS, templatic regenerates the Go and the bundle, the app
+    restarts and open pages reload with the new markup and the new CSS.
+- **The two watchers do not wait for each other.** When templatic's build
+  starts before Tailwind has written (a slow Tailwind run, or a shorter
+  `--debounce`), it bundles the old CSS, then sees the write and builds
+  again; pages end on the new CSS. Tailwind leaves its output untouched
+  when it compiles the same CSS, so the regenerated `*_templ.go` files do
+  not loop the two.
+
+Ctrl-C stops both watchers and the app. After the app has been restarted
+once, the restarted app keeps running and holds the port: `templatic dev`
+stops only the first app process on exit (fixed by
+[#55](https://github.com/nkapatos/templatic/pull/55)).
+
+## What it shows
+
+- **Tailwind scans the `.templ` files and nothing else.**
+  `@import "tailwindcss" source(none)` in `tailwind.css` turns off
+  automatic source detection; `@source "./components/**/*.templ"` is the
+  only input. Automatic detection reads every file git does not ignore
+  (`.templatic/` and `node_modules/` are skipped only because
+  `.gitignore` lists them), `*.md` included, so class-like words in prose
+  become CSS: this README names `skew-y-12` and `bg-fuchsia-950`; with
+  automatic detection both are in the output, with `source(none)`
+  neither is.
+- **Write class names whole in the `.templ` files.** Tailwind reads the
+  source as text: `"bg-" + color` or a class built in a `.go` file is
+  never seen. `Level` in `components/home.templ` spells out both of its
+  badges.
+- **Classes of swapped markup are in the CSS too.** The `level` region
+  (`w.Region` in `main.go`, `Level` in `components/home.templ`) renders a
+  grey badge below 10 and a green one from 10 on. A page loaded at 0
+  never had the green badge's classes in its HTML; they arrive with the
+  region's markup after `w.Redraw`, and are styled because Tailwind
+  compiled them from the source, not from a rendered page.
+- **One stylesheet in the bundle.** `client/app.ts` imports
+  `./tailwind.out.css`; templatic bundles it into the app entry's CSS,
+  fingerprints it and `templatic.Head` links it. In production
+  `templatic generate` minifies it.
+- **Variants style templatic's attributes.** The step input uses
+  `aria-invalid:outline-red-600`: with JavaScript the runtime marks the
+  refused field `aria-invalid`. Tailwind classes on the span around
+  `ui.FieldError` style the message.
+- **Without JavaScript** the form POSTs to `/add` and the page reloads
+  with the new count and badge, styled the same. A refused step renders
+  the page again with the message, but the field carries no
+  `aria-invalid`, so it gets no outline
+  ([#59](https://github.com/nkapatos/templatic/issues/59)).
+
+## Files
+
+| File | Holds |
+|---|---|
+| `tailwind.css` | Tailwind's input: the import and the `@source` glob |
+| `package.json` | the `css`, `generate` and `dev` scripts; Tailwind and concurrently |
+| `main.go` | the world, the count, the level region, the command handlers, the mux |
+| `components/count.go` | the `Add` command, `AddIn`, `Goal` |
+| `components/home.templ` | the page and the `Level` region markup |
+| `components/layout.templ` | the document, `Head`, `Boot` |
+| `client/app.ts` | the bundle entry: imports Tailwind's output |
+| `public/favicon.svg` | a file the app serves itself |
+
+`*_templ.go` files are generated by `templatic generate` and committed, as
+with templ. `.templatic/` and `client/tailwind.out.css` are generated and
+ignored.

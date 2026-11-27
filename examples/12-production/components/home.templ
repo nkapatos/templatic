@@ -18,6 +18,7 @@ templ Home(count *live.Cell[int], failed ui.Option) {
 			</label>
 			<button type="submit">Add</button>
 			@ui.FieldError("n")
+			@ui.FormError()
 		}
 	}
 }

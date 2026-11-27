@@ -4,4 +4,5 @@ footer { margin-top: 3rem; color: #6b7570; font-size: .875rem; }
 input { font: inherit; width: 5rem; }
 button { font: inherit; padding: .3rem 1rem; }
 [aria-invalid="true"] { outline: 2px solid #c62828; }
-form[data-tc-error]::after { content: attr(data-tc-error); display: block; color: #c62828; }
+[data-tc-field-error], [data-tc-form-error] { display: block; color: #c62828; }
+[data-tc-field-error]:empty, [data-tc-form-error]:empty { display: none; }

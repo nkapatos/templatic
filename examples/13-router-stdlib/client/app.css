@@ -1,0 +1,9 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; color: #1d2421; }
+header .brand { font-weight: 600; color: inherit; text-decoration: none; }
+footer { margin-top: 3rem; color: #6b7570; font-size: .875rem; }
+.items { list-style: none; padding: 0; }
+.items li { display: flex; justify-content: space-between; padding: .5rem 0; border-bottom: 1px solid #e3e7e5; }
+.likes, .count { font-variant-numeric: tabular-nums; color: #6b7570; }
+.count { font-size: 1.5rem; }
+button { font: inherit; padding: .4rem 1rem; border: 1px solid #2f6f4f; border-radius: .375rem; background: #2f6f4f; color: #fff; cursor: pointer; }
+form[data-tc-error]::after { content: attr(data-tc-error); display: block; color: #c62828; }

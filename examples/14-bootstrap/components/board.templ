@@ -1,0 +1,54 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/ui"
+)
+
+// Board is the board region's markup: one Bootstrap card per service.
+templ Board(services []Service) {
+	<div class="row row-cols-1 row-cols-md-2 g-3">
+		for _, s := range services {
+			<div class="col">
+				@card(s)
+			</div>
+		}
+	</div>
+}
+
+templ card(s Service) {
+	<div class="card h-100" id={ "svc-" + s.ID }>
+		<div class="card-header d-flex align-items-center gap-2">
+			<strong class="me-auto">{ s.Name }</strong>
+			// The tooltip hook updates its title when a redraw changes it.
+			<span class={ "badge", badgeClass(s.Status) } tabindex="0" data-bs-title={ "since " + s.Since.Format("15:04:05") } { ui.Hook("bs-tooltip", nil)... }>{ s.Status }</span>
+			// Leaves on recovery: the hook's destroyed disposes its tooltip.
+			if s.Incident != "" {
+				<span class="badge rounded-pill text-bg-dark" tabindex="0" data-bs-title={ s.Incident } { ui.Hook("bs-tooltip", nil)... }>incident</span>
+			}
+			// The dropdown's data API listens on document, so it works on
+			// redrawn markup; a redraw closes an open menu.
+			<div class="dropdown">
+				<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
+				<ul class="dropdown-menu dropdown-menu-end">
+					<li><a class="dropdown-item" href={ templ.SafeURL("/report?service=" + s.ID) } data-bs-toggle="modal" data-bs-target="#report-modal" data-service={ s.ID }>Report incident…</a></li>
+					<li><a class="dropdown-item" href={ templ.SafeURL("/report?service=" + s.ID) }>Open the report page</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="card-body">
+			<p class="card-text">Latency <span class="badge text-bg-light border">{ strconv.Itoa(s.LatencyMS) } ms</span></p>
+			// One form, one submit button per status: the pressed button's
+			// value is the input's status, with or without JS.
+			@ui.FormFor(Set, "/set") {
+				<input type="hidden" name="service" value={ s.ID }/>
+				<div class="btn-group btn-group-sm" role="group" aria-label={ "Set " + s.Name + " status" }>
+					for _, st := range Statuses {
+						<button type="submit" name="status" value={ st } class={ "btn", templ.KV("btn-secondary active", st == s.Status), templ.KV("btn-outline-secondary", st != s.Status) } aria-pressed={ strconv.FormatBool(st == s.Status) }>{ st }</button>
+					}
+				</div>
+			}
+		</div>
+	</div>
+}
