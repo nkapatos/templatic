@@ -9,6 +9,7 @@ type AddIn struct {
 	N int `json:"n"`
 }
 
+// Validate refuses a step outside -100..100.
 func (in AddIn) Validate() error {
 	if in.N < -100 || in.N > 100 {
 		return live.Invalid("n", "pick a step between -100 and 100")
