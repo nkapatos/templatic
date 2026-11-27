@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-var cellCtors = map[string]int{"NewCell": 1, "DeclareSessionCell": 0}
+// The topic argument's index in each constructor a bind may name: a cell, or a collection whose Snapshot the field holds.
+var cellCtors = map[string]int{"NewCell": 1, "DeclareSessionCell": 0, "NewCollection": 1}
 
 type cellTopics struct {
 	topics     map[string]string
@@ -43,7 +44,7 @@ func checkBinds(prog *program, islands []Island) error {
 			if _, ok := ct.topics[b.Topic]; ok {
 				continue
 			}
-			msg := fmt.Sprintf("%s: island %s: bind=%s:%s names no declared cell (live.NewCell / live.DeclareSessionCell with a literal or const topic)",
+			msg := fmt.Sprintf("%s: island %s: bind=%s:%s names no declared cell or collection (live.NewCell / live.DeclareSessionCell / live.NewCollection with a literal or const topic)",
 				isl.File, isl.Tag, b.Field, b.Topic)
 			if near := nearestTopic(b.Topic, ct.topics); near != "" {
 				msg += fmt.Sprintf("; did you mean %q (%s)?", near, ct.topics[near])
