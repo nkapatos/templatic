@@ -119,7 +119,8 @@ for d in examples/*/; do
   (
     cd "$d"
     npm ci --no-audit --no-fund --loglevel=error
-    go tool templatic generate >/dev/null
+    # An example with its own build steps (e.g. Tailwind) runs them in its generate script.
+    if grep -q '"generate":' package.json; then npm run --silent generate >/dev/null; else go tool templatic generate >/dev/null; fi
     go mod tidy -diff
     go vet ./...
     go test ./...
