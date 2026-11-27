@@ -154,6 +154,78 @@ describe("stream url", () => {
 	});
 });
 
+describe("back/forward cache", () => {
+	function pageEvent(type: "pagehide" | "pageshow", persisted: boolean): void {
+		const ev = new Event(type);
+		Object.defineProperty(ev, "persisted", { value: persisted });
+		window.dispatchEvent(ev);
+	}
+
+	test("pagehide closes the stream and schedules no reconnect, so a cached page holds no connection", async () => {
+		const es = connected();
+		es.open();
+		es.frame({ kind: "ready" });
+		pageEvent("pagehide", true);
+		expect(es.closed).toBe(true);
+		expect(tc.tcState().live.connection).toBe("torn");
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(FakeEventSource.instances).toHaveLength(1);
+	});
+
+	test("pagehide cancels a pending reconnect", async () => {
+		const es = connected();
+		es.open();
+		es.error();
+		pageEvent("pagehide", true);
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(FakeEventSource.instances).toHaveLength(1);
+	});
+
+	test("a restore from the cache reconnects at once as a reconnect and records the resume", async () => {
+		const first = connected();
+		first.open();
+		first.frame({ kind: "ready" });
+		const before = tc.tcState().live;
+		pageEvent("pagehide", true);
+		pageEvent("pageshow", true);
+		expect(FakeEventSource.instances).toHaveLength(2);
+		const es = FakeEventSource.last;
+		expect(es.url).toContain("r=1");
+		es.open();
+		es.frame({ kind: "ready" });
+		const st = tc.tcState().live;
+		expect(st.connection).toBe("open");
+		expect(st.disconnects).toBe(before.disconnects + 1);
+		expect(st.resumes).toBe(before.resumes + 1);
+	});
+
+	test("a restore after the session expired gets the server's resync, which reloads", () => {
+		const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
+		connected().open();
+		pageEvent("pagehide", true);
+		pageEvent("pageshow", true);
+		FakeEventSource.last.open();
+		FakeEventSource.last.frame({ kind: "resync" });
+		expect(reload).toHaveBeenCalledTimes(1);
+	});
+
+	test("a first pageshow and a pagehide that unloads open nothing more", async () => {
+		const es = connected();
+		pageEvent("pageshow", false);
+		expect(FakeEventSource.instances).toHaveLength(1);
+		pageEvent("pagehide", false);
+		expect(es.closed).toBe(true);
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(FakeEventSource.instances).toHaveLength(1);
+	});
+
+	test("a restore while the stream is open opens no second one", () => {
+		connected().open();
+		pageEvent("pageshow", true);
+		expect(FakeEventSource.instances).toHaveLength(1);
+	});
+});
+
 describe("backoff", () => {
 	// reconnectsAfter asserts the reconnect lands exactly ms after the drop
 	async function reconnectsAfter(es: FakeEventSource, ms: number): Promise<FakeEventSource> {

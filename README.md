@@ -160,6 +160,19 @@ components.Add.Handle(w, func(s *live.Session, in components.AddIn) (any, error)
 
 An optional pages router lives under `experimental/` and may change.
 
+## Serve it over HTTP/2 or HTTP/3
+
+Each open page keeps one connection to the server for its live updates.
+Over HTTP/1.1, browsers allow only six connections per site, shared by all
+tabs, so a seventh tab of the app waits until one closes. HTTP/2 and HTTP/3
+carry every page's stream over one connection and lift that limit.
+
+Browsers speak HTTP/2 and HTTP/3 only over TLS. Serve the app behind a
+proxy or load balancer that terminates TLS (Caddy, nginx, a cloud load
+balancer), or serve TLS from Go itself: `http.Server.ListenAndServeTLS`
+speaks HTTP/2 without further setup. Plain HTTP/1.1 is fine for local
+development with a few tabs.
+
 ## Where generated files go
 
 - `*_templ.go` and `*_tc.go` sit beside your `.templ` files. Commit them, as

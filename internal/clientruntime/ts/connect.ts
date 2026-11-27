@@ -1,4 +1,6 @@
 // Reconnects by hand: an auto-retried EventSource repeats its original URL, but ?u= must carry the current address.
+// The stream closes on pagehide: Chromium keeps a page it holds in the back/forward cache streaming, so each
+// navigation would pin one of the origin's HTTP/1.1 connections until the cache evicts the page (about 60s).
 
 import { apply, type WireEvent } from "./live";
 import { markLiveOpen, pageToken, readConfig, recordLive } from "./tc";
@@ -14,7 +16,7 @@ function streamURL(reconnect: boolean): string {
 	return `${cfg.stream}?${parts.join("&")}`;
 }
 
-/** connect opens the live stream and reconnects with backoff; it throws when the page has no token. */
+/** connect opens the live stream, reconnects with backoff, closes it while the page is hidden in the back/forward cache and resumes on restore; it throws when the page has no token. */
 export function connect(): EventSource {
 	if (!pageToken()) {
 		throw new Error("tc: live disabled: the page has no token; pass world.PageToken(r) as templatic.BootOptions.Token");
@@ -22,9 +24,25 @@ export function connect(): EventSource {
 	let torn = false;
 	let awaitingFirstFrame = false;
 	let delay = BASE_DELAY_MS;
+	let current: EventSource | undefined;
+	let retry: ReturnType<typeof setTimeout> | undefined;
+
+	// drop closes the stream and records the outage once, however many drops it spans
+	const drop = (): void => {
+		current?.close();
+		current = undefined;
+		clearTimeout(retry);
+		retry = undefined;
+		awaitingFirstFrame = false;
+		if (!torn) {
+			torn = true;
+			recordLive("disconnect");
+		}
+	};
 
 	const open = (reconnect: boolean): EventSource => {
 		const es = new EventSource(streamURL(reconnect));
+		current = es;
 		es.onopen = () => {
 			if (torn) awaitingFirstFrame = true;
 			else markLiveOpen();
@@ -42,18 +60,20 @@ export function connect(): EventSource {
 			apply(wire);
 		});
 		es.onerror = () => {
-			// one outage, one record: the retry loop keeps erroring while the network is down
-			es.close();
-			awaitingFirstFrame = false;
-			if (!torn) {
-				torn = true;
-				recordLive("disconnect");
-			}
+			drop();
 			// equal jitter so clients torn together do not reconnect in lockstep
-			setTimeout(() => open(true), delay / 2 + Math.random() * (delay / 2));
+			retry = setTimeout(() => open(true), delay / 2 + Math.random() * (delay / 2));
 			delay = Math.min(delay * 2, MAX_DELAY_MS);
 		};
 		return es;
 	};
+
+	window.addEventListener("pagehide", drop);
+	window.addEventListener("pageshow", () => {
+		// only a page restored from the cache shows without a stream; it reattaches at once, resuming within the session's grace, else the server resyncs
+		if (current) return;
+		delay = BASE_DELAY_MS;
+		open(true);
+	});
 	return open(false);
 }
