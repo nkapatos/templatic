@@ -1,0 +1,26 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · client libraries</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			// Dragging needs JavaScript; the arrows work without it.
+			<noscript><style>.grip { display: none; }</style></noscript>
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+		</head>
+		<body>
+			<nav><a href="/">Queue</a> <a href="/map">Map</a></nav>
+			<main>
+				{ children... }
+			</main>
+			// Boot comes after the island, so it preloads the island's module.
+			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+		</body>
+	</html>
+}

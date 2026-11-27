@@ -23,6 +23,7 @@ directory with the commands in its README.
 | [13-router-echo](13-router-echo) | the same app on echo v5: handlers through `echo.WrapHandler`, which sets the path values |
 | [14-bootstrap](14-bootstrap) | Bootstrap from npm through the bundle: data-API widgets across morphs, tooltips and popovers in hooks, stateful widgets outside live regions |
 | [15-tailwind](15-tailwind) | Tailwind as the app's own build step beside `templatic dev`: scanning `.templ` only, classes used only in live markup |
+| [16-client-libraries](16-client-libraries) | client libraries beside live state: a SortableJS reorder through the typed generated commands, Leaflet loaded lazily in an island, locale formatting in a hook |
 
 ## Running one
 
