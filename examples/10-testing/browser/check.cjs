@@ -124,7 +124,7 @@ async function main() {
 		check(true, "a reconnected and resumed");
 		await waitText(a, "#count", "5");
 		await waitText(a, "[data-tc-collection]", "+3 → 5");
-		check(true, "a caught up: the count and the log caught up");
+		check(true, "a caught up: the count and the missed log entry");
 
 		// Without JavaScript: the form posts, the server redirects, and the
 		// live pages follow.
