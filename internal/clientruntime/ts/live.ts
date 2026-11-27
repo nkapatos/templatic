@@ -1,6 +1,8 @@
 import { Idiomorph } from "idiomorph";
 
-import { applyOps, applyReset, catchUp, forget, subscribeShown, type GapHandler, type Op } from "./collections";
+import { applyOps, applyReset, forget, subscribeShown, type GapHandler, type Op } from "./collections";
+import { applyDataOps, applyDataReset, deliverData } from "./data";
+import { catchUp } from "./subscribe";
 import { abandonPending } from "./commands";
 import { applyDev, type DevFrame } from "./dev";
 import { morphCallbacks, scanHooks } from "./hooks";
@@ -14,7 +16,10 @@ export interface WireEvent {
 	html?: string;
 	/** ver is the collection version after an ops batch, or of a reset. */
 	ver?: number;
+	/** ops carry html for a rendered collection, v for a data collection. */
 	ops?: Op[];
+	/** items is a data collection reset's entries. */
+	items?: unknown;
 	what?: string;
 	css?: Record<string, string>;
 	message?: string;
@@ -54,7 +59,7 @@ export function apply(ev: WireEvent): void {
 			if (!ev.topic || typeof ev.ver !== "number" || !Array.isArray(ev.ops)) return;
 			break;
 		case "reset":
-			if (!ev.topic || typeof ev.ver !== "number" || typeof ev.html !== "string") return;
+			if (!ev.topic || typeof ev.ver !== "number" || (typeof ev.html !== "string" && !Array.isArray(ev.items))) return;
 			break;
 		case "ready":
 			markReady();
@@ -105,9 +110,14 @@ function flush(): void {
 					break;
 				case "ops":
 					for (const c of applyOps(topic, ev.ver!, ev.ops!, gapHandler)) swappedCallback?.(c);
+					applyDataOps(topic, ev.ver!, ev.ops!);
 					break;
 				case "reset":
-					for (const c of applyReset(topic, ev.ver!, ev.html!)) swappedCallback?.(c);
+					if (typeof ev.html === "string") {
+						for (const c of applyReset(topic, ev.ver!, ev.html)) swappedCallback?.(c);
+					} else {
+						applyDataReset(topic, ev.ver!, ev.items);
+					}
 					break;
 			}
 		} catch (err) {
@@ -115,6 +125,13 @@ function flush(): void {
 			tcPhase("live", err);
 		}
 	});
+	// once per frame, however many batches a data collection received in it
+	try {
+		deliverData();
+	} catch (err) {
+		console.error("tc: delivering collection items failed", err);
+		tcPhase("live", err);
+	}
 }
 
 function deliverCell(topic: string, value: unknown): void {

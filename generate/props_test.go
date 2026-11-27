@@ -116,6 +116,32 @@ type P struct {
 	}
 }
 
+func TestPropsMapsLiveSnapshotToItsItemsArray(t *testing.T) {
+	dir := writePkg(t, `package app
+
+import "github.com/nkapatos/templatic/live"
+
+type Row struct {
+	ID   int    `+"`json:\"id\"`"+`
+	Text string `+"`json:\"text\"`"+`
+}
+
+type P struct {
+	Rows live.Snapshot[Row] `+"`json:\"rows\"`"+`
+}
+`)
+	out, err := convertProps(t, dir, "P")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body := out.Interfaces["P"]; !strings.Contains(body, "rows: Row[];") {
+		t.Fatalf("live.Snapshot[Row] must type as Row[]: %q (warnings %v)", body, out.Warnings)
+	}
+	if body := out.Interfaces["Row"]; !strings.Contains(body, "id: number;") {
+		t.Fatalf("the item type must be emitted: %q", body)
+	}
+}
+
 func TestPropsFollowJSONMarshalers(t *testing.T) {
 	dir := writePkg(t, `package app
 

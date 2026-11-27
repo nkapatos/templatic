@@ -101,6 +101,20 @@ func f(w *lv.World) {
 	}
 }
 
+func TestBindCheckAcceptsACollectionTopic(t *testing.T) {
+	files := map[string]string{"feed/feed.go": `package feed
+
+import "github.com/nkapatos/templatic/live"
+
+func f(w *live.World) {
+	live.NewCollection(w, "orders.all", func(s string) string { return s })
+}
+`}
+	if err := bindApp(t, "orders.all", files); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestBindCheckReadsConstTopicFromAnotherPackage(t *testing.T) {
 	files := map[string]string{
 		"topics/topics.go": "package topics\n\nconst prefix = \"x.\"\n\nconst Range = prefix + \"range\"\n",

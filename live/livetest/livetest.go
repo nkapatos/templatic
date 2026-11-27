@@ -216,12 +216,14 @@ func (s *Session) LastSwap(topic string) (string, bool) {
 	return sw[len(sw)-1], true
 }
 
-// Op is one recorded collection change: Kind "u" (an upsert, HTML the item), "d" (a removal) or "reset" (HTML every
-// item, Key empty), at Version.
+// Op is one recorded collection change at Version: Kind "u" (an upsert), "d" (a removal) or "reset" (every item,
+// Key empty). A server-rendered collection's change carries HTML; a data collection's carries Value, the item's
+// JSON, or for a reset the items as [{"k","v"}…].
 type Op struct {
 	Kind    string
 	Key     string
 	HTML    string
+	Value   jsontext.Value
 	Version uint64
 }
 
@@ -249,12 +251,14 @@ func (s *Session) Ops(topic string) []Op {
 			continue
 		}
 		var b struct {
-			Ver  uint64 `json:"ver"`
-			HTML string `json:"html"`
-			Ops  []struct {
-				Op   string `json:"op"`
-				K    string `json:"k"`
-				HTML string `json:"html"`
+			Ver   uint64         `json:"ver"`
+			HTML  string         `json:"html"`
+			Items jsontext.Value `json:"items"`
+			Ops   []struct {
+				Op   string         `json:"op"`
+				K    string         `json:"k"`
+				HTML string         `json:"html"`
+				V    jsontext.Value `json:"v"`
 			} `json:"ops"`
 		}
 		switch ev.Kind {
@@ -262,23 +266,24 @@ func (s *Session) Ops(topic string) []Op {
 			_ = json.Unmarshal(ev.Body, &b)
 			first := b.Ver - uint64(len(b.Ops)) + 1
 			for i, op := range b.Ops {
-				out = append(out, Op{Kind: op.Op, Key: op.K, HTML: op.HTML, Version: first + uint64(i)})
+				out = append(out, Op{Kind: op.Op, Key: op.K, HTML: op.HTML, Value: op.V, Version: first + uint64(i)})
 			}
 		case live.KindReset:
 			_ = json.Unmarshal(ev.Body, &b)
-			out = append(out, Op{Kind: "reset", HTML: b.HTML, Version: b.Ver})
+			out = append(out, Op{Kind: "reset", HTML: b.HTML, Value: b.Items, Version: b.Ver})
 		}
 	}
 	return out
 }
 
-// WaitOp waits up to d for a change of collection topic whose HTML contains substr (any change when substr is "").
+// WaitOp waits up to d for a change of collection topic whose HTML or Value contains substr (any change when substr
+// is "").
 func (s *Session) WaitOp(topic, substr string, d time.Duration) Op {
 	s.t.Helper()
 	deadline := time.Now().Add(d)
 	for {
 		for _, op := range s.Ops(topic) {
-			if strings.Contains(op.HTML, substr) {
+			if strings.Contains(op.HTML, substr) || strings.Contains(string(op.Value), substr) {
 				return op
 			}
 		}
