@@ -372,3 +372,82 @@ func TestCollectionUpdateIsAtomicAndKeepsTheKey(t *testing.T) {
 		t.Fatal("a refused Update must change nothing")
 	}
 }
+
+func dataRows(w *World, topic string) *Collection[row] {
+	return NewCollection(w, topic, func(r row) string { return r.ID })
+}
+
+func TestDataCollectionSnapshotHoldsKeysOrderAndVersion(t *testing.T) {
+	w := NewWorld()
+	c := dataRows(w, "orders").Limit(2)
+	if err := c.Upsert(row{"a", "A"}, row{"b", "B"}, row{"c", "C"}); err != nil {
+		t.Fatal(err)
+	}
+	snap := c.Snapshot()
+	if snap.Version() != 3 || len(snap.Items()) != 2 || snap.Items()[0].ID != "c" {
+		t.Fatalf("snapshot: version %d items %+v", snap.Version(), snap.Items())
+	}
+	got, err := json.Marshal(struct {
+		Orders Snapshot[row] `json:"orders"`
+	}{snap})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"orders":{"tc":"snapshot","ver":3,"limit":2,"items":[{"k":"c","v":{"ID":"c","Text":"C"}},{"k":"b","v":{"ID":"b","Text":"B"}}]}}`
+	if string(got) != want {
+		t.Fatalf("snapshot JSON:\n got %s\nwant %s", got, want)
+	}
+	tail, _ := json.Marshal(dataRows(w, "log").Tail().Snapshot())
+	if string(tail) != `{"tc":"snapshot","ver":0,"tail":true,"items":[]}` {
+		t.Fatalf("empty tail snapshot: %s", tail)
+	}
+}
+
+func TestDataCollectionSendsItemsAsJSON(t *testing.T) {
+	w := NewWorld()
+	c := dataRows(w, "orders").History(1)
+	_ = c.Upsert(row{"a", "A"}, row{"b", "B"})
+	ts := serveWorld(t, w)
+	st := openStreamQuery(t, ts, "data", "c=orders:2", nil)
+	st.discardUntilReady(t)
+
+	if _, err := c.Update("a", func(r row) row { r.Text = "<A2>"; return r }); err != nil {
+		t.Fatal(err)
+	}
+	_ = c.Remove("b")
+	for _, want := range []string{`"ver":3,"ops":[{"op":"u","k":"a","v":{"ID":"a","Text":"<A2>"}}]`, `"ver":4,"ops":[{"op":"d","k":"b"}]`} {
+		f, ok := st.next(t, time.Second)
+		for ok && !strings.Contains(f, `"kind":"ops"`) {
+			f, ok = st.next(t, time.Second)
+		}
+		if !ok || !strings.Contains(f, want) {
+			t.Fatalf("frame %q, want %s", f, want)
+		}
+	}
+
+	// Past the history, a page gets the whole set in the snapshot's shape.
+	late := openStreamQuery(t, ts, "late", "c=orders:1", nil)
+	late.discardUntilReady(t)
+	f, ok := late.next(t, time.Second)
+	for ok && !strings.Contains(f, `"kind":"reset"`) {
+		f, ok = late.next(t, time.Second)
+	}
+	if !ok || !strings.Contains(f, `"topic":"orders","tc":"snapshot","ver":4,"items":[{"k":"a","v":{"ID":"a","Text":"<A2>"}}]`) {
+		t.Fatalf("reset frame %q", f)
+	}
+}
+
+func TestCollectionFormsDoNotMix(t *testing.T) {
+	w := NewWorld()
+	panics := func(what string, fn func()) {
+		t.Helper()
+		defer func() {
+			if recover() == nil {
+				t.Errorf("%s did not panic", what)
+			}
+		}()
+		fn()
+	}
+	panics("Snapshot of a rendered collection", func() { rows(w, "html").Snapshot() })
+	panics("Render of a data collection", func() { render(t, dataRows(w, "data")) })
+}
