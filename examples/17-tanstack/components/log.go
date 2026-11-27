@@ -2,6 +2,7 @@ package components
 
 import (
 	"slices"
+	"strconv"
 
 	"github.com/nkapatos/templatic/live"
 )
@@ -20,10 +21,17 @@ type Row struct {
 	Text  string `json:"text"`
 }
 
+// Key is the row's item key in the log collection.
+func (r Row) Key() string { return "r" + strconv.Itoa(r.ID) }
+
+// LogTopic is the log collection's topic.
+const LogTopic = "log.rows"
+
 // LogProps are the props of the log-list island.
 type LogProps struct {
-	// Rows is the whole log, newest first, at most LogSize long.
-	Rows []Row `json:"rows"`
+	// Rows is the log, newest first, at most LogSize long; the island then
+	// receives each change to it.
+	Rows live.Snapshot[Row] `json:"rows"`
 }
 
 // RateIn is the input of SetRate.

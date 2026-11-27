@@ -13,8 +13,9 @@ import (
 //templatic:island tag=log-list props=LogProps variant=lit bind=rows:log.rows
 templ LogList(props LogProps) {
 	<div class="fallback">
-		<p>{ strconv.Itoa(len(props.Rows)) } rows at load time; the newest 20 are below. Scrolling through all of them needs JavaScript.</p>
-		@logRows(props.Rows[:min(20, len(props.Rows))])
+		{{ rows := props.Rows.Items() }}
+		<p>{ strconv.Itoa(len(rows)) } rows at load time; the newest 20 are below. Scrolling through all of them needs JavaScript.</p>
+		@logRows(rows[:min(20, len(rows))])
 	</div>
 }
 
@@ -37,8 +38,8 @@ templ LogPage(props LogProps, rate *live.Cell[int]) {
 		<h1>Live log</h1>
 		<p>
 			The server keeps the last { strconv.Itoa(LogSize) } rows and adds
-			<strong>@ui.Cell(rate)</strong> a second. Each change sends the
-			whole log to every open page.
+			<strong>@ui.Cell(rate)</strong> a second. Each new row is sent on
+			its own, to the pages that show the log.
 		</p>
 		<p class="actions">
 			Rows a second:

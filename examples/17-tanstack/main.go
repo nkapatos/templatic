@@ -51,7 +51,7 @@ func main() {
 		templ.Handler(components.LogPage(feed.props(), feed.rate)).ServeHTTP(rw, r)
 	})
 	mux.HandleFunc("GET /table", func(rw http.ResponseWriter, r *http.Request) {
-		templ.Handler(components.TablePage(components.TableProps{Orders: orders.Get()})).ServeHTTP(rw, r)
+		templ.Handler(components.TablePage(components.TableProps{Orders: orders.Snapshot()})).ServeHTTP(rw, r)
 	})
 	mux.Handle("GET /signup", templ.Handler(components.SignupPage(signup, nil, users.taken)))
 	// Without JavaScript the plain form POSTs here: success redirects back,

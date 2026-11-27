@@ -1,5 +1,6 @@
 // The log-list island: every row of the log in a TanStack Virtual list. Only
-// the rows in view are in the DOM; the bound cell replaces the whole log.
+// the rows in view are in the DOM. The log is a bound collection: the server
+// sends each new row, and the runtime hands the island a new array per frame.
 
 import { html, type PropertyValues } from "lit";
 import { createRef, ref } from "lit/directives/ref.js";

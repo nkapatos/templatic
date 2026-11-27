@@ -11,11 +11,11 @@ import (
 //templatic:island tag=order-table props=TableProps variant=lit bind=orders:orders.all
 templ OrderTable(props TableProps) {
 	<div class="fallback">
-		<p>{ strconv.Itoa(len(props.Orders)) } orders. Sorting, search and paging need JavaScript.</p>
+		<p>{ strconv.Itoa(len(props.Orders.Items())) } orders. Sorting, search and paging need JavaScript.</p>
 		<table class="grid">
 			<thead><tr><th>#</th><th>Customer</th><th>Status</th><th>Amount</th><th>Placed</th></tr></thead>
 			<tbody>
-				for _, o := range props.Orders {
+				for _, o := range props.Orders.Items() {
 					<tr><td>{ strconv.Itoa(o.ID) }</td><td>{ o.Customer }</td><td>{ o.Status }</td><td class="num">{ Money(o.Amount) }</td><td>{ o.Placed }</td></tr>
 				}
 			</tbody>
