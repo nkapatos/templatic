@@ -1,0 +1,4 @@
+node_modules/
+.templatic/
+client/tailwind.out.css
+public/js/shadcn-templ-*.js

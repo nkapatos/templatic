@@ -1,0 +1,154 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+
+	"examples/templui/components/badge"
+	"examples/templui/components/button"
+	"examples/templui/components/card"
+	"examples/templui/components/dialog"
+	"examples/templui/components/field"
+	"examples/templui/components/input"
+	"examples/templui/components/tabs"
+)
+
+// Home is the page: the about dialog, the add form and the tasks region;
+// failed is nil on a plain render and ui.Failed after a refused no-JS POST.
+templ Home(tasks *live.Region, failed ui.Option) {
+	@Layout("templUI tasks") {
+		<header class="flex items-center gap-3">
+			<h1 class="text-2xl font-semibold tracking-tight">Tasks</h1>
+			@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+				templUI
+			}
+			<div class="ml-auto">
+				@about()
+			</div>
+		</header>
+		@card.Card() {
+			@card.Header() {
+				@card.Title() {
+					Add a task
+				}
+				@card.Description() {
+					Every open page sees it at once.
+				}
+			}
+			@card.Content() {
+				@ui.FormFor(Add, "/add", failed, ui.Class("flex items-start gap-2")) {
+					@field.Field() {
+						@field.Label(field.LabelProps{For: "title", Class: "sr-only"}) {
+							Title
+						}
+						@input.Input(input.Props{ID: "title", Name: "title", Placeholder: "Write the README", Value: ui.FieldValue(ctx, "title", "")})
+						<span class="text-sm text-destructive">
+							@ui.FieldError("title")
+						</span>
+					}
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Add
+					}
+				}
+			}
+		}
+		@tasks
+	}
+}
+
+// about is a templUI dialog outside the live region, so a redraw never
+// touches its open state.
+templ about() {
+	@dialog.Dialog(dialog.Props{ID: "about"}) {
+		@button.Button(button.Props{Variant: button.VariantOutline, Attributes: dialog.Trigger(ctx)}) {
+			About
+		}
+		@dialog.Content() {
+			@dialog.Header() {
+				@dialog.Title() {
+					About this page
+				}
+				@dialog.Description() {
+					templUI components in a templatic app. The task list below is a world region: every change redraws it on every open page.
+				}
+			}
+			@dialog.Footer() {
+				@button.Button(button.Props{Variant: button.VariantOutline, Attributes: dialog.Close(ctx)}) {
+					Close
+				}
+			}
+		}
+	}
+}
+
+// TaskList is the tasks region's markup: tabs of open and done tasks.
+templ TaskList(all []Task) {
+	{{ open, done := split(all) }}
+	@card.Card() {
+		@card.Content() {
+			@tabs.Tabs(tabs.Props{ID: "task-tabs", DefaultValue: "open"}) {
+				@tabs.List() {
+					@tabs.Trigger(tabs.TriggerProps{ID: "tab-open", Value: "open"}) {
+						Open
+						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+							{ strconv.Itoa(len(open)) }
+						}
+					}
+					@tabs.Trigger(tabs.TriggerProps{ID: "tab-done", Value: "done"}) {
+						Done
+						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+							{ strconv.Itoa(len(done)) }
+						}
+					}
+				}
+				@tabs.Content(tabs.ContentProps{ID: "panel-open", Value: "open"}) {
+					@taskRows(open, "nothing open")
+				}
+				@tabs.Content(tabs.ContentProps{ID: "panel-done", Value: "done"}) {
+					@taskRows(done, "nothing done yet")
+				}
+			}
+		}
+	}
+}
+
+templ taskRows(ts []Task, empty string) {
+	if len(ts) == 0 {
+		<p class="py-3 text-sm text-muted-foreground">{ empty }</p>
+	}
+	<ul class="divide-y">
+		for _, t := range ts {
+			<li id={ "task-" + strconv.Itoa(t.ID) } class="flex items-center gap-3 py-2">
+				<span class={ "flex-1 text-sm", templ.KV("text-muted-foreground line-through", t.Done) }>{ t.Title }</span>
+				if t.Done {
+					@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+						done
+					}
+				}
+				@ui.FormFor(Toggle, "/toggle") {
+					@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantGhost, Size: button.SizeSm, Attributes: templ.Attributes{"name": "id", "value": strconv.Itoa(t.ID)}}) {
+						if t.Done {
+							Reopen
+						} else {
+							Done
+						}
+					}
+				}
+			</li>
+		}
+	</ul>
+}
+
+// split returns the open and the done tasks, in list order.
+func split(all []Task) (open, done []Task) {
+	for _, t := range all {
+		if t.Done {
+			done = append(done, t)
+		} else {
+			open = append(open, t)
+		}
+	}
+	return open, done
+}

@@ -1,0 +1,25 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title }</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			// Links the bundle's CSS: Tailwind's output with templUI's theme.
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+			// templUI's own script bundle, served from /static/js (see README).
+			@Scripts()
+		</head>
+		<body class="bg-muted/40 font-sans antialiased">
+			<main class="mx-auto my-12 flex max-w-xl flex-col gap-6 px-4">
+				{ children... }
+			</main>
+			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+		</body>
+	</html>
+}
