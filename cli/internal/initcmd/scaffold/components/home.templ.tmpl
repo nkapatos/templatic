@@ -21,6 +21,7 @@ templ Home(count *live.Cell[int], failed ui.Option) {
 				<input name="n" type="number" value={ ui.FieldValue(ctx, "n", "1") } { ui.Hook("autofocus", nil)... }/>
 			</label>
 			@ui.FieldError("n")
+			@ui.FormError()
 			<button type="submit">Add</button>
 		}
 	}
