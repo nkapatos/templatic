@@ -17,8 +17,9 @@ import (
 )
 
 // Home is the page: the shared count, this page's tally, the add form and the
-// log. failed is ui.Failed after a refused no-JS POST, else nil.
-func Home(count *live.Cell[int], log []Entry, failed ui.Option) templ.Component {
+// log, a collection that renders its own container. failed is ui.Failed after
+// a refused no-JS POST, else nil.
+func Home(count *live.Cell[int], log templ.Component, failed ui.Option) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -82,7 +83,7 @@ func Home(count *live.Cell[int], log []Entry, failed ui.Option) templ.Component 
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(ui.FieldValue(ctx, "n", "1")).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 20, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 21, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -102,11 +103,11 @@ func Home(count *live.Cell[int], log []Entry, failed ui.Option) templ.Component 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2>Log</h2> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h2>Log</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = Log.Region(log).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = log.Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -187,7 +188,7 @@ func Tally(a PageAdds) templ.Component {
 	})
 }
 
-// EntryView is one log line, inside its stream item wrapper.
+// EntryView is one log line, inside the <li> its collection renders.
 func EntryView(e Entry) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

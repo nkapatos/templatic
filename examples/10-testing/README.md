@@ -18,7 +18,7 @@ npm run check-browser        # the browser check
 ## What it shows
 
 - **The app under test.** `newCounter` in `counter.go` declares the `count`
-  cell and binds the `log` stream on a `live.World`, and registers `Add`'s
+  cell and the `log` collection on a `live.World`, and registers `Add`'s
   handler. `main.go` calls the same function on its world, so a test builds
   exactly what the app serves, without HTTP. The tally is a session region
   (`//templatic:region` on `Tally` in `components/home.templ`); `Add`
@@ -35,12 +35,14 @@ npm run check-browser        # the browser check
 - **Swaps.** `s.Swaps(topic)` and `s.LastSwap(topic)` return the HTML
   swapped into a region. The tally swap reaches only the caller: the other
   session has none (`TestAddSwapsOnlyTheCallersTally`).
-- **Appends.** `s.Appends(topic)` returns each appended item's HTML,
-  wrapper included.
+- **Collections.** A page gets a collection's changes once it shows it:
+  `s.Show(c.log.Topic(), c.log.Version())` is a page that rendered the log
+  as it stands. `s.Ops(topic)` then returns each change, its HTML with the
+  item's root element included.
 - **Waiting.** A command's events are recorded by the time `Call` returns.
   An update with no command behind it, such as `tick` from a goroutine,
-  arrives later: `s.WaitAppend(topic, substr, d)` and `s.WaitSwap` poll for
-  it and fail the test after `d` (`TestTickAppendsFromAGoroutine`).
+  arrives later: `s.WaitOp(topic, substr, d)` and `s.WaitSwap` poll for
+  it and fail the test after `d` (`TestTickLogsFromAGoroutine`).
 - **Session end.** A livetest session is retired when its test ends, and
   the world's `OnDisconnect` runs then. A subtest scopes one page, so a test
   can check what the app does when a page leaves
@@ -74,32 +76,33 @@ What it checks:
   in front of the app: `cut()` closes every connection through it and
   refuses new ones, `restore()` lets them through again. With `a` cut off
   the check adds on `b`, restores, and checks that `a` resumes within the
-  grace with the current count and the log replayed into its region.
+  grace with the current count and the entries it missed.
 - **Without JavaScript.** A third page with JavaScript off posts the form:
   the server redirects to the page with the new count, the live pages
   follow, and a refused step answers 422 with the field error.
 - **Console errors fail the check**, and so do uncaught exceptions. The
   browser logs a failed load as a console error too; the two the check
-  causes on purpose (the cut stream on `a`, the refused post's 422) are
+  causes on purpose (the cut connection on `a`, the refused post's 422) are
   expected by their URL, any other one fails.
 
-## Not yet: reconnects in livetest
+## Reconnects in livetest and in the browser
 
-`livetest` cannot drop a session's connection and reattach it
-([#7](https://github.com/nkapatos/templatic/issues/7)), so what a page gets
-back after a reconnect (cells resent, the stream replayed into its region)
-is checked only in the browser here.
+`a.Drop()` detaches a session as a page losing its connection does, and
+`a.Resume()` reattaches it within the grace: the test then checks that `a`
+gets the log entries it missed. `livetest`'s `Cell` reads the world's
+current value, not what a page received, so that a resumed page gets the
+count again is checked only in the browser.
 
 ## Files
 
 | File | Holds |
 |---|---|
 | `main.go` | the world, the tick goroutine, the page, the no-JS post, the routes |
-| `counter.go` | the count, the kept log, each page's tally, `Add`'s handler, `add` and `tick` |
+| `counter.go` | the count, the log, each page's tally, `Add`'s handler, `add` and `tick` |
 | `counter_test.go` | the livetest tests |
 | `browser/check.cjs` | the browser check |
 | `browser/relay.cjs` | the TCP relay that cuts and restores connections |
-| `components/counter.go` | `AddIn`, `Add`, `Entry`, the `Log` stream, `PageAdds` and the topics |
+| `components/counter.go` | `AddIn`, `Add`, `Entry`, `PageAdds` and the topics |
 | `components/home.templ` | the page, the tally region, the log line |
 | `components/layout.templ` | the document |
 | `client/app.ts`, `client/app.css` | the styles |

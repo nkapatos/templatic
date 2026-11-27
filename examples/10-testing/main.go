@@ -44,7 +44,7 @@ func main() {
 	manifests.Notify(w)
 
 	home := func(rw http.ResponseWriter, r *http.Request, failed ui.Option, status int) {
-		templ.Handler(components.Home(c.count, c.entries(), failed), templ.WithStatus(status)).ServeHTTP(rw, r)
+		templ.Handler(components.Home(c.count, c.log, failed), templ.WithStatus(status)).ServeHTTP(rw, r)
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(rw http.ResponseWriter, r *http.Request) { home(rw, r, nil, http.StatusOK) })

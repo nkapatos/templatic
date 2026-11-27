@@ -12,10 +12,17 @@ import (
 	"examples/testing/components"
 )
 
+// shown connects a page that rendered the log as it stands.
+func shown(t *testing.T, w *live.World, c *counter) *livetest.Session {
+	s := livetest.New(t, w)
+	s.Show(c.log.Topic(), c.log.Version())
+	return s
+}
+
 func TestAddReachesEveryPage(t *testing.T) {
 	w := live.NewWorld()
-	newCounter(w)
-	a, b := livetest.New(t, w), livetest.New(t, w)
+	c := newCounter(w)
+	a, b := shown(t, w, c), shown(t, w, c)
 
 	if _, err := livetest.Call(a, components.Add, components.AddIn{N: 2}); err != nil {
 		t.Fatal(err)
@@ -25,8 +32,8 @@ func TestAddReachesEveryPage(t *testing.T) {
 		if !s.Cell(components.CountTopic, &got) || got != 2 {
 			t.Errorf("%s: count = %d, want 2", name, got)
 		}
-		if items := s.Appends(components.Log.Topic()); len(items) != 1 || !strings.Contains(items[0], "+2 → 2") {
-			t.Errorf("%s: log appends = %q, want one +2 → 2", name, items)
+		if ops := s.Ops(components.LogTopic); len(ops) != 1 || !strings.Contains(ops[0].HTML, "+2 → 2") {
+			t.Errorf("%s: log ops = %v, want one +2 → 2", name, ops)
 		}
 	}
 }
@@ -87,14 +94,14 @@ func TestAddRefusesABadStep(t *testing.T) {
 	}
 }
 
-func TestTickAppendsFromAGoroutine(t *testing.T) {
+func TestTickLogsFromAGoroutine(t *testing.T) {
 	w := live.NewWorld()
 	c := newCounter(w)
-	s := livetest.New(t, w)
+	s := shown(t, w, c)
 
-	// No command behind it: the append arrives on its own, so wait for it.
+	// No command behind it: the entry arrives on its own, so wait for it.
 	go c.tick(t.Context(), 5*time.Millisecond)
-	s.WaitAppend(components.Log.Topic(), "server clock", time.Second)
+	s.WaitOp(components.LogTopic, "server clock", time.Second)
 }
 
 func TestTheLogKeepsItsLastEntries(t *testing.T) {
@@ -105,7 +112,7 @@ func TestTheLogKeepsItsLastEntries(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got := c.entries()
+	got := c.log.Items()
 	if len(got) != keepEntries || !strings.HasPrefix(got[0].Text, "+4 ") {
 		t.Fatalf("kept %d entries from %q, want %d from +4", len(got), got[0].Text, keepEntries)
 	}
@@ -127,4 +134,24 @@ func TestAPageTallyEndsWithItsSession(t *testing.T) {
 	if n != 0 {
 		t.Fatalf("%d tallies kept after the page left, want 0", n)
 	}
+}
+
+func TestAResumedPageCatchesUpOnTheLog(t *testing.T) {
+	w := live.NewWorld()
+	c := newCounter(w)
+	a, b := shown(t, w, c), shown(t, w, c)
+
+	// a loses its connection; b adds while a is away, which a does not see.
+	a.Drop()
+	if _, err := livetest.Call(b, components.Add, components.AddIn{N: 3}); err != nil {
+		t.Fatal(err)
+	}
+	if ops := a.Ops(components.LogTopic); len(ops) != 0 {
+		t.Fatalf("a got %d log ops while dropped, want 0", len(ops))
+	}
+	// On resume a is sent the entries after the version it last received.
+	if !a.Resume() {
+		t.Fatal("a did not resume within the grace")
+	}
+	a.WaitOp(components.LogTopic, "+3 → 3", time.Second)
 }

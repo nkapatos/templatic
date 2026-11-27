@@ -8,6 +8,7 @@ input[name="n"] { width: 6rem; }
 [aria-invalid="true"] { outline: 2px solid #c62828; }
 [data-tc-field-error] { color: #c62828; font-size: .875rem; flex-basis: 100%; }
 [data-tc-field-error]:empty { display: none; }
-[data-tc-stream] [data-tc-item] { display: flex; gap: .5rem; align-items: baseline; padding: .3rem 0; border-bottom: 1px solid #eef1ef; }
-[data-tc-stream] time { color: #6b7570; font-size: .8rem; font-variant-numeric: tabular-nums; }
-[data-tc-stream] .tick { color: #6b7570; }
+[data-tc-collection] { list-style: none; margin: 0; padding: 0; }
+[data-tc-collection] [data-tc-item] { display: flex; gap: .5rem; align-items: baseline; padding: .3rem 0; border-bottom: 1px solid #eef1ef; }
+[data-tc-collection] time { color: #6b7570; font-size: .8rem; font-variant-numeric: tabular-nums; }
+[data-tc-collection] .tick { color: #6b7570; }

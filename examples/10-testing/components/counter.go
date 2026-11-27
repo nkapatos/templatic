@@ -34,14 +34,11 @@ type Entry struct {
 	At   time.Time
 }
 
-// Key is the entry's stream item key.
+// Key is the entry's item key.
 func (e Entry) Key() string { return "e" + strconv.Itoa(e.ID) }
 
-// Log is the world's log, newest at the bottom.
-var Log = live.DeclareStream[Entry]("log").
-	Key(Entry.Key).
-	Renders(EntryView).
-	Tail()
+// LogTopic is the log's collection topic.
+const LogTopic = "log"
 
 // TallyTopic is the topic of the per-page tally region.
 const TallyTopic = "tally"

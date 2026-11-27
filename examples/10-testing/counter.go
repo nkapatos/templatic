@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/nkapatos/templatic/live"
@@ -13,25 +13,29 @@ import (
 	"examples/testing/components"
 )
 
-// keepEntries bounds the log the server keeps and a page gets on load or reconnect.
+// keepEntries bounds the log, on the server and on every open page.
 const keepEntries = 10
 
-// counter holds the shared count, the kept log and each open page's own adds.
+// counter holds the shared count, the log and each open page's own adds.
 type counter struct {
-	w     *live.World
 	count *live.Cell[int]
+	log   *live.Collection[components.Entry]
+	next  atomic.Int64
 
 	mu    sync.Mutex
-	next  int
-	log   []components.Entry
 	pages map[string]components.PageAdds // by session id
 }
 
 // newCounter declares the count and the log on w, registers Add's JS handler
 // and forgets a page's adds when its session ends.
 func newCounter(w *live.World) *counter {
-	c := &counter{w: w, count: live.NewCell(w, components.CountTopic, 0), pages: map[string]components.PageAdds{}}
-	components.Log.Bind(w, c.entries)
+	c := &counter{
+		count: live.NewCell(w, components.CountTopic, 0),
+		// Tail: the log reads top to bottom, the newest entry at the bottom.
+		log: live.NewCollection(w, components.LogTopic, components.Entry.Key).
+			Renders(components.EntryView).Elements("ol", "li").Tail().Limit(keepEntries),
+		pages: map[string]components.PageAdds{},
+	}
 	components.Add.Handle(w, func(s *live.Session, in components.AddIn) (any, error) {
 		if err := c.add(in.N); err != nil {
 			return nil, err
@@ -80,22 +84,8 @@ func (c *counter) tick(ctx context.Context, d time.Duration) {
 	}
 }
 
+// append puts an entry at the bottom of the log on every page.
 func (c *counter) append(kind, text string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.next++
-	e := components.Entry{ID: c.next, Kind: kind, Text: text, At: time.Now()}
-	c.log = append(c.log, e)
-	if len(c.log) > keepEntries {
-		c.log = slices.Clone(c.log[len(c.log)-keepEntries:])
-	}
-	// Appending under the lock keeps the pages' order the log's order.
-	return components.Log.Append(c.w, e)
-}
-
-// entries returns the kept log, oldest first.
-func (c *counter) entries() []components.Entry {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return slices.Clone(c.log)
+	e := components.Entry{ID: int(c.next.Add(1)), Kind: kind, Text: text, At: time.Now()}
+	return c.log.Upsert(e)
 }

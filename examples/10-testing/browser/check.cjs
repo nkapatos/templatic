@@ -105,7 +105,7 @@ async function main() {
 		check(true, "a's add shows on both pages");
 		await waitText(a, "#tally", "added 1 times, last 2");
 		check((await text(b, "#tally")).includes("not added yet"), "only a's tally changed");
-		await waitText(b, "[data-tc-stream]", "+2 → 2");
+		await waitText(b, "[data-tc-collection]", "+2 → 2");
 		check(true, "the add is logged on b");
 
 		// Cut a's connection, add on b while a is away, then restore it.
@@ -123,8 +123,8 @@ async function main() {
 		});
 		check(true, "a reconnected and resumed");
 		await waitText(a, "#count", "5");
-		await waitText(a, "[data-tc-stream]", "+3 → 5");
-		check(true, "a caught up: the count and the replayed log");
+		await waitText(a, "[data-tc-collection]", "+3 → 5");
+		check(true, "a caught up: the count and the log caught up");
 
 		// Without JavaScript: the form posts, the server redirects, and the
 		// live pages follow.
