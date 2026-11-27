@@ -115,6 +115,21 @@ contracts apps rely on:
   carries what a naming convention cannot: a stable element name independent
   of the Go name, a props struct, the island's variant and its bindings to
   server state.
+- **Keyed lists are collections the world holds, sent as versioned
+  deltas.** A collection keeps a keyed, ordered working set in memory, as a
+  cell keeps a value, and publishes each upsert and removal once, as an op
+  with the next version; a limit bounds it on the server and in the page. A
+  collection is either rendered by the server (its ops carry an item's HTML
+  and apply to its container) or data for islands (its ops carry JSON and a
+  bound field gets the items); it replaces the append-only streams. A page
+  subscribes to the collections its markup shows, with the version it
+  rendered, when its stream connects and when a swap brings one in. The
+  server answers with the ops since that version from a bounded history, or
+  with the whole set once the history no longer reaches back. So a
+  collection reaches only the pages that show it, and a page is not sent a
+  dataset it already holds. This follows Phoenix LiveView's streams, but the
+  set is kept once per world rather than per connection, so a page can be
+  caught up.
 - **The generator reads Go through the type checker**, after templ's
   generation: real types across packages, aliases, embedded fields,
   constants and build tags, instead of resolving syntax by hand.
