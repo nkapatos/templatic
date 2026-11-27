@@ -10,13 +10,12 @@ import (
 	"github.com/a-h/templ"
 )
 
-// Option configures a component's element: Swaps, Tail, Class, Attrs or
+// Option configures a component's element: Swaps, Class, Attrs or
 // Multipart where the component supports it.
 type Option func(*elemConfig)
 
 type elemConfig struct {
 	swaps     string
-	tail      bool
 	multipart bool
 	class     string
 	attrs     templ.Attributes

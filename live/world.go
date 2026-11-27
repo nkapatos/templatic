@@ -16,7 +16,7 @@ type World struct {
 	mu           sync.RWMutex
 	cells        map[string]cellView
 	regions      map[string]*Region
-	streams      map[string]*Stream
+	collections  map[string]subscribable
 	commands     map[string]CommandHandler
 	sessions     map[string]*Session
 	onConnect    []func(*Session)
@@ -75,7 +75,7 @@ func NewWorld(opts ...Option) *World {
 	w := &World{
 		cells:        map[string]cellView{},
 		regions:      map[string]*Region{},
-		streams:      map[string]*Stream{},
+		collections:  map[string]subscribable{},
 		commands:     map[string]CommandHandler{},
 		sessions:     map[string]*Session{},
 		grace:        DefaultResumeGrace,

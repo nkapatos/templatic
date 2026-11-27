@@ -26,9 +26,8 @@
 //   - [Region] marks its children as the region published under a topic; the
 //     page supplies the first render, and [live.World.Redraw] or
 //     [live.World.Swap] replace the contents later.
-//   - [Stream] is the container for a stream topic, and [StreamItem] is one
-//     keyed item in the wrapper that [live.World.Append] sends. [Tail] makes
-//     live items land below existing ones instead of on top.
+//   - A [live.Collection] renders its own container and keyed items: put it
+//     in the page with @, or with [live.Collection.With] to add a class.
 //
 // # Raising commands
 //

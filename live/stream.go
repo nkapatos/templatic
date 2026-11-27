@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -151,10 +153,9 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fn(s)
 		}
 	}
-	// A fresh load needs no replay: its markup already holds the rendered state.
-	if reconnect {
-		h.world.replayStreams(s)
-	}
+	// Fresh or not, the page says which collections it shows and at what version, so a gap since its render is
+	// caught up too. A collection that cannot be rendered is skipped: a broken frame would not be repaired.
+	_ = s.subscribe(parseHeld(q.Get("c")))
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
@@ -189,4 +190,24 @@ func (h *streamHandler) resyncOnly(w http.ResponseWriter, flusher http.Flusher) 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("id: 1\nevent: tc\ndata: {\"kind\":\"resync\"}\n\n"))
 	flusher.Flush()
+}
+
+// parseHeld reads "topic:ver,topic:ver"; a malformed pair is skipped, and a missing version reads as -1 (none).
+func parseHeld(raw string) map[string]int64 {
+	if raw == "" {
+		return nil
+	}
+	out := map[string]int64{}
+	for pair := range strings.SplitSeq(raw, ",") {
+		topic, ver, _ := strings.Cut(pair, ":")
+		if checkTopic(topic) != nil {
+			continue
+		}
+		n, err := strconv.ParseInt(ver, 10, 64)
+		if err != nil || n < 0 {
+			n = -1
+		}
+		out[topic] = n
+	}
+	return out
 }

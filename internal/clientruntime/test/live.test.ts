@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { configScript } from "./support/config";
+import { stubFetch } from "./support/fetch";
 import { frame, settle } from "./support/frame";
 import { recordMorphs } from "./support/morph";
 
@@ -22,7 +24,7 @@ const FIXTURE = `
 	<div data-tc-region="metrics"><span data-tc-cell="ws.count">0</span></div>
 </div>
 <div data-tc-region="drops">
-	<div data-tc-stream="drops.list">
+	<div data-tc-collection="drops.list" data-tc-ver="1">
 		<div data-tc-item="n1"><p>N1</p></div>
 	</div>
 </div>
@@ -31,7 +33,7 @@ const FIXTURE = `
 
 const TAIL_FIXTURE = `
 <div data-tc-region="brain">
-	<div data-tc-stream="brain.conv" data-tc-dir="tail">
+	<div data-tc-collection="brain.conv" data-tc-ver="1" data-tc-dir="tail">
 		<div data-tc-item="m1"><p>M1</p></div>
 	</div>
 </div>
@@ -47,11 +49,13 @@ function regionOf(topic: string): Element {
 	return r;
 }
 
-function streamOf(topic: string): Element {
-	const s = document.querySelector(`[data-tc-stream="${topic}"]`);
-	if (!s) throw new Error(`fixture missing stream ${topic}`);
+function containerOf(topic: string): Element {
+	const s = document.querySelector(`[data-tc-collection="${topic}"]`);
+	if (!s) throw new Error(`fixture missing collection ${topic}`);
 	return s;
 }
+
+const up = (k: string, body = k.toUpperCase()) => ({ op: "u" as const, k, html: `<div data-tc-item="${k}"><p>${body}</p></div>` });
 
 function itemKeys(container: Element): Array<string | null> {
 	return [...container.children].map((c) => c.getAttribute("data-tc-item"));
@@ -120,7 +124,7 @@ describe("swap", () => {
 		const { morphs } = recordMorphs();
 		mount(FIXTURE);
 		await frame({ kind: "swap", topic: "ws", html: `<span data-tc-cell="ws.count">1</span><div data-tc-region="metrics"><span data-tc-cell="ws.count">m</span></div>` });
-		await frame({ kind: "swap", topic: "drops", html: `<div data-tc-stream="drops.list"><div data-tc-item="x">X</div></div>` });
+		await frame({ kind: "swap", topic: "drops", html: `<div data-tc-collection="drops.list" data-tc-ver="1"><div data-tc-item="x">X</div></div>` });
 		await frame(
 			{ kind: "swap", topic: "ws", html: `<span data-tc-cell="ws.count">2</span><div data-tc-region="metrics"><span data-tc-cell="ws.count">m</span></div>` },
 			{ kind: "swap", topic: "metrics", html: `<span data-tc-cell="ws.count">3</span>` },
@@ -166,135 +170,136 @@ describe("swap", () => {
 	test("region morphs never sweep hosts outside the swapped region", async () => {
 		mount(FIXTURE);
 		const host = document.querySelector("[data-tc-island]")!;
-		await frame({ kind: "swap", topic: "drops", html: `<div data-tc-stream="drops.list"><div data-tc-item="z">Z</div></div>` });
+		await frame({ kind: "swap", topic: "drops", html: `<div data-tc-collection="drops.list" data-tc-ver="1"><div data-tc-item="z">Z</div></div>` });
 		expect(document.querySelector("[data-tc-island]")).toBe(host);
 		expect(host.textContent).toBe("LIVE DOM");
 	});
 });
 
-describe("append", () => {
-	test("append prepends items so the newest lands on top", async () => {
+describe("collections", () => {
+	test("ops insert at the head and update in place", async () => {
 		mount(FIXTURE);
-		await frame({
-			kind: "append",
-			topic: "drops.list",
-			items: [
-				{ k: "n3", html: `<div data-tc-item="n3"><p>N3</p></div>` },
-				{ k: "n4", html: `<div data-tc-item="n4"><p>N4</p></div>` },
-			],
-		});
-		expect(itemKeys(streamOf("drops.list"))).toEqual(["n4", "n3", "n1"]);
+		await frame({ kind: "ops", topic: "drops.list", ver: 4, ops: [up("n3"), up("n4"), up("n1", "N1b")] });
+		expect(itemKeys(containerOf("drops.list"))).toEqual(["n4", "n3", "n1"]);
+		expect(text('[data-tc-item="n1"]')).toBe("N1b");
+		expect(containerOf("drops.list").getAttribute("data-tc-ver")).toBe("4");
 	});
 
-	test("append dedupes by key: double delivery never duplicates", async () => {
+	test("a batch delivered twice applies once", async () => {
 		mount(FIXTURE);
-		const stream = streamOf("drops.list");
-		await frame({ kind: "append", topic: "drops.list", items: [{ k: "n2", html: `<div data-tc-item="n2"><p>N2-first</p></div>` }] });
-		await frame({ kind: "append", topic: "drops.list", items: [{ k: "n2", html: `<div data-tc-item="n2"><p>N2-second</p></div>` }] });
-		expect(stream.querySelectorAll('[data-tc-item="n2"]')).toHaveLength(1);
-		expect(stream.querySelector('[data-tc-item="n2"]')?.textContent).toBe("N2-first");
+		await frame({ kind: "ops", topic: "drops.list", ver: 2, ops: [up("n2", "first")] });
+		await frame({ kind: "ops", topic: "drops.list", ver: 2, ops: [up("n2", "again")] });
+		expect(containerOf("drops.list").querySelectorAll('[data-tc-item="n2"]')).toHaveLength(1);
+		expect(text('[data-tc-item="n2"]')).toBe("first");
 	});
 
-	test("append events in one frame merge in arrival order", async () => {
+	test("batches in one frame apply in arrival order, onSwapped once per batch", async () => {
 		mount(FIXTURE);
 		const swapped = vi.fn();
 		live.onSwapped(swapped);
 		await frame(
-			{ kind: "append", topic: "drops.list", items: [{ k: "n5", html: `<div data-tc-item="n5"></div>` }] },
-			{ kind: "append", topic: "drops.list", items: [{ k: "n6", html: `<div data-tc-item="n6"></div>` }] },
+			{ kind: "ops", topic: "drops.list", ver: 2, ops: [up("n5")] },
+			{ kind: "ops", topic: "drops.list", ver: 4, ops: [up("n6"), { op: "d", k: "n1" }] },
 		);
-		expect(itemKeys(streamOf("drops.list"))).toEqual(["n6", "n5", "n1"]);
-		expect(swapped).toHaveBeenCalledTimes(1);
+		expect(itemKeys(containerOf("drops.list"))).toEqual(["n6", "n5"]);
+		expect(swapped).toHaveBeenCalledTimes(2);
 	});
 
-	test("append on a missing container is a no-op", async () => {
+	test("ops on a missing container are a no-op", async () => {
 		mount(FIXTURE);
 		const swapped = vi.fn();
 		live.onSwapped(swapped);
-		await frame({ kind: "append", topic: "nope.list", items: [{ k: "x", html: `<div data-tc-item="x"></div>` }] });
+		await frame({ kind: "ops", topic: "nope.list", ver: 1, ops: [up("x")] });
 		expect(swapped).not.toHaveBeenCalled();
 	});
 
-	test("one flush mixing append and swap converges on full state", async () => {
-		const html = `<div data-tc-stream="drops.list"><div data-tc-item="n9"><p>N9FULL</p></div><div data-tc-item="n1"><p>N1</p></div></div>`;
+	test("a swap then an op on a container inside it apply in that order (#43)", async () => {
 		mount(FIXTURE);
 		await frame(
-			{ kind: "append", topic: "drops.list", items: [{ k: "n9", html: `<div data-tc-item="n9"><p>N9</p></div>` }] },
-			{ kind: "swap", topic: "drops", html },
+			{ kind: "swap", topic: "drops", html: `<div data-tc-collection="drops.list" data-tc-ver="5"><div data-tc-item="n1"><p>N1</p></div></div>` },
+			{ kind: "ops", topic: "drops.list", ver: 6, ops: [up("n9")] },
 		);
-		expect(itemKeys(streamOf("drops.list"))).toEqual(["n9", "n1"]);
-		expect(streamOf("drops.list").querySelector('[data-tc-item="n9"]')?.textContent).toBe("N9FULL");
-		mount(FIXTURE);
-		await frame(
-			{ kind: "swap", topic: "drops", html },
-			{ kind: "append", topic: "drops.list", items: [{ k: "n9", html: `<div data-tc-item="n9"><p>N9</p></div>` }] },
-		);
-		expect(itemKeys(streamOf("drops.list"))).toEqual(["n9", "n1"]);
+		expect(itemKeys(containerOf("drops.list"))).toEqual(["n9", "n1"]);
+		expect(containerOf("drops.list").getAttribute("data-tc-ver")).toBe("6");
 	});
 
-	test("onSwapped fires per surface: container after appends, region after morph", async () => {
+	test("an op then a swap of its region: the swap's state wins and the next op finds the gap", async () => {
+		mount(FIXTURE);
+		const gaps: number[] = [];
+		live.onCollectionGap((_, v) => gaps.push(v));
+		await frame(
+			{ kind: "ops", topic: "drops.list", ver: 2, ops: [up("n2")] },
+			{ kind: "swap", topic: "drops", html: `<div data-tc-collection="drops.list" data-tc-ver="1"><div data-tc-item="n1"><p>N1</p></div></div>` },
+		);
+		expect(itemKeys(containerOf("drops.list"))).toEqual(["n1"]);
+		await frame({ kind: "ops", topic: "drops.list", ver: 3, ops: [up("n3")] });
+		expect(gaps).toEqual([1]);
+	});
+
+	test("a gap asks the server for what the container missed, from the version it holds", async () => {
+		document.body.innerHTML = configScript() + FIXTURE;
+		tc.markReady();
+		const calls = stubFetch({ status: 204 });
+		const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
+		await frame({ kind: "ops", topic: "drops.list", ver: 9, ops: [up("n9")] });
+		await vi.runAllTimersAsync();
+		expect(calls).toHaveLength(1);
+		expect(calls[0]!.json()).toEqual({ sid: "test-sid", subscribe: { "drops.list": 1 } });
+		expect(reload).not.toHaveBeenCalled();
+		expect(itemKeys(containerOf("drops.list"))).toEqual(["n1"]);
+	});
+
+	test("a swap that brings in a container subscribes to it once", async () => {
+		document.body.innerHTML = configScript() + `<div data-tc-region="pane"></div>`;
+		tc.markReady();
+		const calls = stubFetch({ status: 204 });
+		const html = `<ul data-tc-collection="inbox" data-tc-ver="4"><li data-tc-item="a">a</li></ul>`;
+		await frame({ kind: "swap", topic: "pane", html });
+		await frame({ kind: "swap", topic: "pane", html: html + "<p>more</p>" });
+		await vi.runAllTimersAsync();
+		expect(calls.map((c) => c.json())).toEqual([{ sid: "test-sid", subscribe: { inbox: 4 } }]);
+	});
+
+	test("a failed subscribe reloads the page, which renders the collection afresh", async () => {
+		document.body.innerHTML = configScript() + FIXTURE;
+		tc.markReady();
+		stubFetch({ status: 500 });
+		const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
+		await frame({ kind: "ops", topic: "drops.list", ver: 9, ops: [up("n9")] });
+		await vi.runAllTimersAsync();
+		expect(reload).toHaveBeenCalledTimes(1);
+	});
+
+	test("a reset makes the container hold exactly its items", async () => {
+		mount(FIXTURE);
+		await frame({ kind: "reset", topic: "drops.list", ver: 7, html: `<div data-tc-item="n8"><p>N8</p></div><div data-tc-item="n1"><p>N1b</p></div>` });
+		expect(itemKeys(containerOf("drops.list"))).toEqual(["n8", "n1"]);
+		expect(text('[data-tc-item="n1"]')).toBe("N1b");
+		expect(containerOf("drops.list").getAttribute("data-tc-ver")).toBe("7");
+	});
+
+	test("onSwapped fires per surface: the container after ops, the region after a morph", async () => {
 		mount(FIXTURE);
 		const seen: string[] = [];
 		live.onSwapped((el) => {
 			seen.push(el.outerHTML.slice(0, 48));
 		});
 		await frame(
-			{ kind: "append", topic: "drops.list", items: [{ k: "n7", html: `<div data-tc-item="n7"></div>` }] },
+			{ kind: "ops", topic: "drops.list", ver: 2, ops: [up("n7")] },
 			{ kind: "swap", topic: "metrics", html: `<span data-tc-cell="ws.count">9</span>` },
 		);
-		expect(seen[0]).toContain("data-tc-stream");
+		expect(seen[0]).toContain("data-tc-collection");
 		expect(seen[1]).toContain("data-tc-region");
-		expect(regionOf("metrics").querySelector('[data-tc-cell="ws.count"]')?.textContent).toBe("9");
-	});
-});
-
-describe("tail streams", () => {
-	test("tail appends item in arrival order below the existing items", async () => {
-		mount(TAIL_FIXTURE);
-		await frame(
-			{ kind: "append", topic: "brain.conv", items: [{ k: "m2", html: `<div data-tc-item="m2"><p>M2</p></div>` }] },
-			{ kind: "append", topic: "brain.conv", items: [{ k: "m3", html: `<div data-tc-item="m3"><p>M3</p></div>` }] },
-		);
-		expect(itemKeys(streamOf("brain.conv"))).toEqual(["m1", "m2", "m3"]);
 	});
 
-	test("tail appends dedupe by key like head appends", async () => {
-		mount(TAIL_FIXTURE);
-		const stream = streamOf("brain.conv");
-		await frame({ kind: "append", topic: "brain.conv", items: [{ k: "m2", html: `<div data-tc-item="m2"><p>M2-first</p></div>` }] });
-		await frame({
-			kind: "append",
-			topic: "brain.conv",
-			items: [
-				{ k: "m2", html: `<div data-tc-item="m2"><p>M2-second</p></div>` },
-				{ k: "m3", html: `<div data-tc-item="m3"><p>M3</p></div>` },
-			],
-		});
-		expect(stream.querySelectorAll('[data-tc-item="m2"]')).toHaveLength(1);
-		expect(stream.querySelector('[data-tc-item="m2"]')?.textContent).toBe("M2-first");
-	});
-
-	test("prepend containers are untouched by the tail attribute elsewhere", async () => {
+	test("a tail container takes new items at the bottom; a head one beside it is untouched", async () => {
 		mount(FIXTURE + "\n" + TAIL_FIXTURE);
-		await frame({ kind: "append", topic: "drops.list", items: [{ k: "n2", html: `<div data-tc-item="n2"></div>` }] });
-		await frame({ kind: "append", topic: "brain.conv", items: [{ k: "m2", html: `<div data-tc-item="m2"></div>` }] });
-		expect(itemKeys(streamOf("drops.list"))).toEqual(["n2", "n1"]);
-		expect(itemKeys(streamOf("brain.conv"))).toEqual(["m1", "m2"]);
-	});
-
-	test("tail convergence: a catch-up swap replaces the region wholesale, direction-free", async () => {
-		mount(TAIL_FIXTURE);
 		await frame(
-			{ kind: "append", topic: "brain.conv", items: [{ k: "m2", html: `<div data-tc-item="m2"><p>M2</p></div>` }] },
-			{
-				kind: "swap",
-				topic: "brain",
-				html: `<div data-tc-stream="brain.conv" data-tc-dir="tail"><div data-tc-item="m1"><p>M1</p></div><div data-tc-item="m2"><p>M2FULL</p></div><div data-tc-item="m4"><p>M4</p></div></div>`,
-			},
+			{ kind: "ops", topic: "brain.conv", ver: 3, ops: [up("m2"), up("m3")] },
+			{ kind: "ops", topic: "drops.list", ver: 2, ops: [up("n2")] },
 		);
-		const stream = streamOf("brain.conv");
-		expect(itemKeys(stream)).toEqual(["m1", "m2", "m4"]);
-		expect(stream.querySelector('[data-tc-item="m2"]')?.textContent).toBe("M2FULL");
+		expect(itemKeys(containerOf("brain.conv"))).toEqual(["m1", "m2", "m3"]);
+		expect(itemKeys(containerOf("drops.list"))).toEqual(["n2", "n1"]);
 	});
 });
 
@@ -327,7 +332,8 @@ describe("control events", () => {
 		expect(vi.getTimerCount()).toBe(0);
 		live.apply({ kind: "cell" });
 		live.apply({ kind: "swap" });
-		live.apply({ kind: "append" });
+		live.apply({ kind: "ops" });
+		live.apply({ kind: "reset", topic: "drops.list" });
 		await settle();
 		expect(text('[data-tc-cell="ws.count"]')).toBe("0");
 		expect(text("[data-tc-island]")).toBe("LIVE DOM");
@@ -336,14 +342,14 @@ describe("control events", () => {
 });
 
 describe("failure containment", () => {
-	test("a throwing bound island does not block later cells, appends or swaps", async () => {
+	test("a throwing bound island does not block later cells, ops or swaps", async () => {
 		tc.registerBinds({ binds: { "bad-island-contain": [{ topic: "contain.bad", field: "v" }] } });
 		mount(`
 			<span data-tc-cell="contain.bad">0</span>
 			<span data-tc-cell="contain.ok">0</span>
 			<bad-island data-tc-island="bad-island-contain">seed</bad-island>
 			<div data-tc-region="contain.swap"><p>old</p></div>
-			<div data-tc-stream="contain.stream"></div>`);
+			<div data-tc-collection="contain.list" data-tc-ver="0"></div>`);
 		const host = document.querySelector('[data-tc-island="bad-island-contain"]')!;
 		(host as unknown as { tcBind: () => void }).tcBind = () => {
 			throw new Error("island bind throws");
@@ -352,11 +358,11 @@ describe("failure containment", () => {
 		await frame(
 			{ kind: "cell", topic: "contain.bad", v: 1 },
 			{ kind: "cell", topic: "contain.ok", v: 7 },
-			{ kind: "append", topic: "contain.stream", items: [{ k: "s1", html: "<div data-tc-item='s1'><p>ARRIVED</p></div>" }] },
+			{ kind: "ops", topic: "contain.list", ver: 1, ops: [up("s1", "ARRIVED")] },
 			{ kind: "swap", topic: "contain.swap", html: "<p data-tc-text='new'>NEW</p>" },
 		);
 		expect(text('[data-tc-cell="contain.ok"]')).toBe("7");
-		expect(itemKeys(streamOf("contain.stream"))).toEqual(["s1"]);
+		expect(itemKeys(containerOf("contain.list"))).toEqual(["s1"]);
 		expect(regionOf("contain.swap").querySelector('[data-tc-text="new"]')?.textContent).toBe("NEW");
 
 		await frame({ kind: "cell", topic: "contain.bad", v: 2 }, { kind: "cell", topic: "contain.ok", v: 8 });

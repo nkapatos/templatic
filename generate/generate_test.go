@@ -258,8 +258,8 @@ func TestBootPhasesAreRecorded(t *testing.T) {
 func TestSwapMorphChainContainsFailures(t *testing.T) {
 	opts, _ := runApp(t)
 	live := read(t, filepath.Join(opts.Root, ".templatic", "runtime", "live.ts"))
-	if !strings.Contains(live, ".catch(") {
-		t.Fatal("runtime live.ts must contain morph-chain failures (one rejection must not poison every later swap)")
+	if !strings.Contains(live, "} catch (err) {") {
+		t.Fatal("runtime live.ts must contain each event's failure (one failed morph must not poison every later swap)")
 	}
 	if !strings.Contains(live, "tcPhase(\"live\"") {
 		t.Fatal("runtime live.ts must record a failed morph in the state record (tcPhase) so it is visible")
@@ -307,25 +307,15 @@ func TestCommandResultsResolvableByClient(t *testing.T) {
 	}
 }
 
-func TestStreamAppendsAppliedKeyedAndPrepended(t *testing.T) {
+func TestRuntimeCopyAppliesCollectionOps(t *testing.T) {
 	opts, _ := runApp(t)
 	live := read(t, filepath.Join(opts.Root, ".templatic", "runtime", "live.ts"))
-	if !strings.Contains(live, `case "append":`) {
-		t.Fatal("runtime live.ts must handle the append event kind")
+	if !strings.Contains(live, `case "ops":`) || !strings.Contains(live, `case "reset":`) {
+		t.Fatal("runtime live.ts must handle the ops and reset event kinds")
 	}
-	if !strings.Contains(live, `[data-tc-stream="`) {
-		t.Fatal("runtime live.ts must target the topic's stream container")
-	}
-	if !strings.Contains(live, `container.querySelector(`+"`"+`[data-tc-item="`) {
-		t.Fatal("runtime live.ts must dedupe stream items by key before inserting")
-	}
-	if !strings.Contains(live, "container.prepend(node)") {
-		t.Fatal("runtime live.ts must prepend new stream items (newest on top)")
-	}
-	appendIdx := strings.Index(live, "container.prepend(node)")
-	cbIdx := strings.Index(live, "swappedCallback?.(container)")
-	if appendIdx == -1 || cbIdx == -1 || appendIdx > cbIdx {
-		t.Fatal("runtime live.ts must run the hydration callback after appending items")
+	collections := read(t, filepath.Join(opts.Root, ".templatic", "runtime", "collections.ts"))
+	if !strings.Contains(collections, "export function applyOps(") {
+		t.Fatal("the runtime copy must carry collections.ts")
 	}
 }
 

@@ -73,12 +73,12 @@ test("hooks: a changed hook name destroys then mounts", async () => {
 	expect(log.filter((l) => !l.startsWith("beforeUpdate"))).toEqual(["mounted:a", "destroyed:a+aborted", "other:mounted"]);
 });
 
-test("hooks: swapped-in and appended elements mount", async () => {
-	document.body.innerHTML = `<div data-tc-region="r"></div><div data-tc-stream="s"></div>`;
+test("hooks: swapped-in and inserted elements mount", async () => {
+	document.body.innerHTML = `<div data-tc-region="r"></div><div data-tc-collection="s" data-tc-ver="0"></div>`;
 	const log: string[] = [];
 	hooks.defineHook("tip", recorder(log));
 	await frame({ kind: "swap", topic: "r", html: tip("a") });
-	await frame({ kind: "append", topic: "s", items: [{ k: "k1", html: `<div data-tc-item="k1">${tip("b")}</div>` }] });
+	await frame({ kind: "ops", topic: "s", ver: 1, ops: [{ op: "u", k: "k1", html: `<div data-tc-item="k1">${tip("b")}</div>` }] });
 	expect(log).toEqual(["mounted:a", "mounted:b"]);
 });
 

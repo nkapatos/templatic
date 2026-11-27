@@ -44,12 +44,17 @@ func world() (*live.World, *live.Cell[int]) {
 		opened.Set(s, in.ID)
 		count.Update(func(n int) int { return n + 1 })
 		if in.ID == "slow" {
-			go func() { time.Sleep(5 * time.Millisecond); _ = w.Append("notes.log", "k1", text("late")) }()
+			go func() { time.Sleep(5 * time.Millisecond); _ = notesLog(w).Upsert("late") }()
 		}
 		return nil, surface.Swap(s, in.ID)
 	})
-	w.Stream("notes.log", func() templ.Component { return text("") })
+	notesLog(w)
 	return w, count
+}
+
+// notesLog is the world's log collection, keyed by the entry itself.
+func notesLog(w *live.World) *live.Collection[string] {
+	return live.NewCollection(w, "notes.log", func(e string) string { return e }).Renders(text)
 }
 
 func TestCallRecordsSwapsAndCells(t *testing.T) {
@@ -101,6 +106,7 @@ func TestErrorsComeBackAsReturned(t *testing.T) {
 func TestSessionsAreIsolatedAndBroadcastsReachAll(t *testing.T) {
 	w, _ := world()
 	a, b := livetest.New(t, w), livetest.New(t, w)
+	b.Show("notes.log", 0)
 	if _, err := livetest.Call(a, open, openIn{ID: "slow"}); err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +117,7 @@ func TestSessionsAreIsolatedAndBroadcastsReachAll(t *testing.T) {
 	if !b.Cell("notes.count", &n) || n != 1 {
 		t.Fatalf("world cell on b = %d", n)
 	}
-	b.WaitAppend("notes.log", "", time.Second)
+	b.WaitOp("notes.log", "late", time.Second)
 	a.WaitSwap("note.surface", "slow", time.Second)
 }
 

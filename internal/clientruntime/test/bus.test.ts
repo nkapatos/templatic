@@ -13,7 +13,7 @@ beforeEach(async () => {
 	context = await import("../ts/context");
 	document.body.innerHTML = `
 <div data-tc-region="panel"><p>old</p></div>
-<div data-tc-stream="feed"></div>
+<div data-tc-collection="feed" data-tc-ver="0"></div>
 <span data-tc-cell="n">0</span>
 `;
 });
@@ -45,11 +45,20 @@ test("bus: swap:before precedes the morph, swap:after follows it", async () => {
 	expect(seen).toEqual(["before:panel:old", "after:panel:new"]);
 });
 
-test("bus: append fires per inserted item, after insertion", async () => {
+test("bus: item fires per changed item, after the change", async () => {
 	const seen: string[] = [];
-	tc.on("append", (d) => seen.push(`${d.key}:${document.querySelector(`[data-tc-item="${d.key}"]`) ? "in" : "missing"}`));
-	await frame({ kind: "append", topic: "feed", items: [{ k: "a", html: '<p data-tc-item="a">A</p>' }, { k: "b", html: '<p data-tc-item="b">B</p>' }] });
-	expect(seen).toEqual(["a:in", "b:in"]);
+	tc.on("item", (d) => seen.push(`${d.change}:${d.key}:${document.querySelector(`[data-tc-item="${d.key}"]`) ? "in" : "gone"}`));
+	await frame({
+		kind: "ops",
+		topic: "feed",
+		ver: 3,
+		ops: [
+			{ op: "u", k: "a", html: '<p data-tc-item="a">A</p>' },
+			{ op: "u", k: "a", html: '<p data-tc-item="a">A2</p>' },
+			{ op: "d", k: "a" },
+		],
+	});
+	expect(seen).toEqual(["insert:a:in", "update:a:in", "remove:a:gone"]);
 });
 
 test("bus: a throwing listener is contained and recorded", async () => {

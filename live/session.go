@@ -3,7 +3,6 @@ package live
 import (
 	"cmp"
 	"context"
-	"encoding/json/v2"
 	"fmt"
 	"io"
 	"maps"
@@ -49,7 +48,8 @@ type Session struct {
 
 	cellMu sync.Mutex
 	cells  map[string]cellView
-	values map[string]any // SessionValue: server-only, never enumerated
+	subs   map[string]subscribable // collections the page shows; guarded by cellMu
+	values map[string]any          // SessionValue: server-only, never enumerated
 }
 
 // Each connection has its own inbox and overflow flag so a retired one's leftovers are not mistaken for the live one's.
@@ -269,6 +269,13 @@ func (s *Session) retire() {
 	if conn != nil {
 		conn.cancel()
 	}
+	s.cellMu.Lock()
+	subs := s.subs
+	s.subs = nil
+	s.cellMu.Unlock()
+	for _, c := range subs {
+		c.unsubscribe(s)
+	}
 	w := s.world
 	w.mu.Lock()
 	if w.sessions[s.sid] == s {
@@ -392,6 +399,8 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 	}
 }
 
+// coalescer gathers a burst: cells and swaps are latest-wins per topic, in the slot of their first arrival; ops
+// and resets keep arrival order, so none is lost or reordered against another of its collection.
 type coalescer struct {
 	order   []event
 	byTopic map[string]int
@@ -399,49 +408,48 @@ type coalescer struct {
 }
 
 func (c *coalescer) add(ev event) {
+	c.n++
+	if ev.kind != KindCell && ev.kind != KindSwap {
+		c.order = append(c.order, ev)
+		return
+	}
 	if c.byTopic == nil {
 		c.byTopic = map[string]int{}
 	}
-	// Kind-level events (ready etc.) have no topic and always append.
-	if ev.topic == "" {
-		c.order = append(c.order, ev)
-		c.n++
-		return
-	}
 	key := ev.topic + "\x00" + ev.kind
-	if i, ok := c.byTopic[key]; ok && i < len(c.order) {
-		if ev.kind == KindAppend {
-			c.order[i] = c.order[i].withAppended(ev)
-		} else if ev.version >= c.order[i].version {
-			// Offers can land out of order; keep the highest version.
+	if i, ok := c.byTopic[key]; ok {
+		// offers can land out of order; keep the highest version
+		if ev.version >= c.order[i].version {
 			c.order[i] = ev
 		}
-		c.n++
 		return
 	}
 	c.byTopic[key] = len(c.order)
 	c.order = append(c.order, ev)
-	c.n++
-}
-
-func (ev event) withAppended(later event) event {
-	var a, b struct {
-		Items []streamItem `json:"items"`
-	}
-	if err := json.Unmarshal(ev.body, &a); err != nil {
-		return later
-	}
-	if err := json.Unmarshal(later.body, &b); err != nil {
-		return ev
-	}
-	body, err := json.Marshal(struct {
-		Items []streamItem `json:"items"`
-	}{Items: append(a.Items, b.Items...)})
-	if err != nil {
-		return ev
-	}
-	ev.body = body
-	return ev
 }
 
 func (c *coalescer) events() []event { return c.order }
+
+// subscribe makes s receive the ops of each collection in held (topic → the version the page holds), with what the
+// page lacks first; unknown topics are ignored.
+func (s *Session) subscribe(held map[string]int64) error {
+	var first error
+	for topic, ver := range held {
+		s.world.mu.RLock()
+		c, ok := s.world.collections[topic]
+		s.world.mu.RUnlock()
+		if !ok {
+			continue
+		}
+		s.cellMu.Lock()
+		if s.subs == nil {
+			s.subs = map[string]subscribable{}
+		}
+		s.subs[topic] = c
+		s.cellMu.Unlock()
+		if err := c.subscribe(s, ver); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
+}

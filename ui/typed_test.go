@@ -61,12 +61,6 @@ func TestAttrsTakesAHook(t *testing.T) {
 
 func TestStyleHooksOnContainers(t *testing.T) {
 	ctx := context.Background()
-	if got := renderString(t, ctx, StreamItem("k1", nil, Class("msg"))); got != `<div data-tc-item="k1" class="msg"></div>` {
-		t.Fatal(got)
-	}
-	if got := renderString(t, ctx, Stream("s", nil, Tail(), Class("list"))); got != `<div data-tc-stream="s" data-tc-dir="tail" class="list"></div>` {
-		t.Fatal(got)
-	}
 	if got := renderString(t, ctx, Region("r", nil, Class("pane"))); got != `<div data-tc-region="r" class="pane"></div>` {
 		t.Fatal(got)
 	}
