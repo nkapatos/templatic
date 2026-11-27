@@ -342,3 +342,33 @@ func TestCollectionWithAddsContainerAttributesButNotItsOwn(t *testing.T) {
 		t.Fatalf("container: %s", got)
 	}
 }
+
+func TestCollectionUpdateIsAtomicAndKeepsTheKey(t *testing.T) {
+	w := NewWorld()
+	c := rows(w, "likes")
+	_ = c.Upsert(row{ID: "a", Text: "0"})
+	var wg sync.WaitGroup
+	for range 50 {
+		wg.Go(func() {
+			_, _ = c.Update("a", func(r row) row {
+				n := 0
+				fmt.Sscan(r.Text, &n)
+				r.Text = fmt.Sprint(n + 1)
+				return r
+			})
+		})
+	}
+	wg.Wait()
+	if r, _ := c.Get("a"); r.Text != "50" || c.Version() != 51 {
+		t.Fatalf("after 50 concurrent updates: %q at version %d", r.Text, c.Version())
+	}
+	if held, err := c.Update("missing", func(r row) row { return r }); held || err != nil {
+		t.Fatalf("missing key: held=%v err=%v", held, err)
+	}
+	if _, err := c.Update("a", func(r row) row { r.ID = "b"; return r }); err == nil {
+		t.Fatal("an Update that changes the key must be refused")
+	}
+	if _, ok := c.Get("b"); ok || c.Version() != 51 {
+		t.Fatal("a refused Update must change nothing")
+	}
+}

@@ -155,11 +155,7 @@ func (c *Collection[T]) Upsert(items ...T) error {
 		if err != nil {
 			return err
 		}
-		op, err := json.Marshal(struct {
-			Op   string `json:"op"`
-			K    string `json:"k"`
-			HTML string `json:"html"`
-		}{"u", k, html})
+		op, err := upsertOp(k, html)
 		if err != nil {
 			return err
 		}
@@ -177,6 +173,40 @@ func (c *Collection[T]) Upsert(items ...T) error {
 	}
 	c.publishLocked(ops)
 	return nil
+}
+
+// Update applies fn to the item under key and publishes the result as one upsert, all under the collection's lock;
+// it reports whether key was held. fn must keep the item's key and must not call the collection's methods.
+func (c *Collection[T]) Update(key string, fn func(old T) T) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	old, ok := c.items[key]
+	if !ok {
+		return false, nil
+	}
+	next := fn(old)
+	if k := c.key(next); k != key {
+		return true, fmt.Errorf("live: collection %q: Update changed key %q to %q", c.topic, key, k)
+	}
+	html, err := c.renderItem(next, key)
+	if err != nil {
+		return true, err
+	}
+	op, err := upsertOp(key, html)
+	if err != nil {
+		return true, err
+	}
+	c.items[key] = next
+	c.publishLocked([]jsontext.Value{op})
+	return true, nil
+}
+
+func upsertOp(key, html string) (jsontext.Value, error) {
+	return json.Marshal(struct {
+		Op   string `json:"op"`
+		K    string `json:"k"`
+		HTML string `json:"html"`
+	}{"u", key, html})
 }
 
 // Remove drops the items under keys, publishing one op per key held; keys it does not hold are ignored.
