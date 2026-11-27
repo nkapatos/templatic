@@ -2,6 +2,7 @@
 // The stream closes on pagehide: Chromium keeps a page it holds in the back/forward cache streaming, so each
 // navigation would pin one of the origin's HTTP/1.1 connections until the cache evicts the page (about 60s).
 
+import { heldParam } from "./collections";
 import { apply, type WireEvent } from "./live";
 import { markLiveOpen, pageToken, readConfig, recordLive } from "./tc";
 
@@ -13,6 +14,9 @@ function streamURL(reconnect: boolean): string {
 	const parts = [`t=${encodeURIComponent(pageToken())}`];
 	if (reconnect) parts.push("r=1");
 	parts.push(`u=${encodeURIComponent(location.pathname + location.search)}`);
+	// the collections the page shows, at the versions it holds: the server sends what they lack, then their ops
+	const held = heldParam();
+	if (held) parts.push(`c=${encodeURIComponent(held)}`);
 	return `${cfg.stream}?${parts.join("&")}`;
 }
 

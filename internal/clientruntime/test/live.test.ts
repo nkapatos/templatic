@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { configScript } from "./support/config";
+import { stubFetch } from "./support/fetch";
 import { frame, settle } from "./support/frame";
 import { recordMorphs } from "./support/morph";
 
@@ -234,12 +236,38 @@ describe("collections", () => {
 		expect(gaps).toEqual([1]);
 	});
 
-	test("a gap reloads the page by default", async () => {
-		mount(FIXTURE);
+	test("a gap asks the server for what the container missed, from the version it holds", async () => {
+		document.body.innerHTML = configScript() + FIXTURE;
+		tc.markReady();
+		const calls = stubFetch({ status: 204 });
 		const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
 		await frame({ kind: "ops", topic: "drops.list", ver: 9, ops: [up("n9")] });
-		expect(reload).toHaveBeenCalledTimes(1);
+		await vi.runAllTimersAsync();
+		expect(calls).toHaveLength(1);
+		expect(calls[0]!.json()).toEqual({ sid: "test-sid", subscribe: { "drops.list": 1 } });
+		expect(reload).not.toHaveBeenCalled();
 		expect(itemKeys(containerOf("drops.list"))).toEqual(["n1"]);
+	});
+
+	test("a swap that brings in a container subscribes to it once", async () => {
+		document.body.innerHTML = configScript() + `<div data-tc-region="pane"></div>`;
+		tc.markReady();
+		const calls = stubFetch({ status: 204 });
+		const html = `<ul data-tc-collection="inbox" data-tc-ver="4"><li data-tc-item="a">a</li></ul>`;
+		await frame({ kind: "swap", topic: "pane", html });
+		await frame({ kind: "swap", topic: "pane", html: html + "<p>more</p>" });
+		await vi.runAllTimersAsync();
+		expect(calls.map((c) => c.json())).toEqual([{ sid: "test-sid", subscribe: { inbox: 4 } }]);
+	});
+
+	test("a failed subscribe reloads the page, which renders the collection afresh", async () => {
+		document.body.innerHTML = configScript() + FIXTURE;
+		tc.markReady();
+		stubFetch({ status: 500 });
+		const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
+		await frame({ kind: "ops", topic: "drops.list", ver: 9, ops: [up("n9")] });
+		await vi.runAllTimersAsync();
+		expect(reload).toHaveBeenCalledTimes(1);
 	});
 
 	test("a reset makes the container hold exactly its items", async () => {

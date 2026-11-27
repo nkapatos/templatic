@@ -1,7 +1,7 @@
 import { Idiomorph } from "idiomorph";
 
 import { destroyUnder, morphCallbacks, scanHooks } from "./hooks";
-import { emit } from "./tc";
+import { emit, isReady, readConfig, sessionID } from "./tc";
 
 /** Op is one change to a collection: an upsert of key k ("u") or its removal ("d"). */
 export interface Op {
@@ -192,4 +192,70 @@ export function applyReset(topic: string, ver: number, html: string): Element[] 
 		emit("item", { topic, key: "", el: container, change: "reset" });
 	}
 	return changed;
+}
+
+// Topics this connection is subscribed to; a new connection starts from what the page shows.
+const subscribed = new Set<string>();
+
+/** shown maps each collection topic under root to the version its container holds (the lowest, when it has several). */
+export function shown(root: ParentNode = document): Map<string, number> {
+	const out = new Map<string, number>();
+	const list = [...root.querySelectorAll("[data-tc-collection]")];
+	if (root instanceof Element && root.hasAttribute("data-tc-collection")) list.push(root);
+	for (const c of list) {
+		const topic = c.getAttribute("data-tc-collection")!;
+		const v = version(c);
+		const prev = out.get(topic);
+		out.set(topic, prev === undefined ? v : Math.min(prev, v));
+	}
+	return out;
+}
+
+/** heldParam returns the c= value a new stream carries (topic:ver pairs) and marks those topics subscribed. */
+export function heldParam(): string {
+	subscribed.clear();
+	const pairs: string[] = [];
+	for (const [topic, v] of shown()) {
+		subscribed.add(topic);
+		pairs.push(v < 0 ? topic : `${topic}:${v}`);
+	}
+	return pairs.join(",");
+}
+
+/** subscribeShown subscribes to the collections under root this connection is not subscribed to yet. */
+export function subscribeShown(root: ParentNode): void {
+	const fresh: Record<string, number> = {};
+	let any = false;
+	for (const [topic, v] of shown(root)) {
+		if (subscribed.has(topic)) continue;
+		fresh[topic] = v;
+		any = true;
+	}
+	if (any) post(fresh);
+}
+
+/** catchUp asks for what a container at version ver of topic missed; the answer arrives on the stream. */
+export function catchUp(topic: string, ver: number): void {
+	post({ [topic]: ver });
+}
+
+// Before ready there is no session to subscribe; the next connect reports the page's containers anyway.
+function post(held: Record<string, number>): void {
+	if (!isReady()) return;
+	for (const topic of Object.keys(held)) subscribed.add(topic);
+	const cfg = readConfig();
+	void fetch(cfg.commands, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ sid: sessionID(), subscribe: held }),
+	})
+		.then((res) => {
+			// 409: the server no longer holds the session; the stream's reconnect resyncs the page
+			if (!res.ok && res.status !== 409) throw new Error(`subscribe answered ${res.status}`);
+		})
+		.catch((err: unknown) => {
+			for (const topic of Object.keys(held)) subscribed.delete(topic);
+			console.error("tc: collection subscribe failed — the page reloads to catch up", err);
+			location.reload();
+		});
 }

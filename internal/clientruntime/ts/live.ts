@@ -1,6 +1,6 @@
 import { Idiomorph } from "idiomorph";
 
-import { applyOps, applyReset, forget, type GapHandler, type Op } from "./collections";
+import { applyOps, applyReset, catchUp, forget, subscribeShown, type GapHandler, type Op } from "./collections";
 import { abandonPending } from "./commands";
 import { applyDev, type DevFrame } from "./dev";
 import { morphCallbacks, scanHooks } from "./hooks";
@@ -28,12 +28,8 @@ let pending: WireEvent[] = [];
 let swappedCallback: SwappedCallback | null = null;
 let flushScheduled = false;
 
-// Until catch-up exists, a container that missed ops cannot be trusted: reload, as a resync does.
-let gapHandler: GapHandler = () => {
-	recordLive("resync");
-	abandonPending();
-	location.reload();
-};
+// A container that missed ops, such as one a racing region swap rolled back, asks for them from the version it holds.
+let gapHandler: GapHandler = catchUp;
 
 /** onSwapped sets the callback run after a region swap or a collection change. */
 export function onSwapped(fn: SwappedCallback): void {
@@ -156,6 +152,7 @@ function morph(topic: string, html: string): void {
 	// innerHTML keeps the region marker; outerHTML would replace it and the next swap would find nothing.
 	Idiomorph.morph(region, html, { morphStyle: "innerHTML", callbacks: morphCallbacks });
 	forget(region);
+	subscribeShown(region);
 	scanHooks(region);
 	swappedCallback?.(region);
 	emit("swap:after", { topic, el: region });

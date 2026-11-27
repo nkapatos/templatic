@@ -72,6 +72,17 @@ describe("resume", () => {
 		expect(st.events.slice(-2).map((e) => e.type)).toEqual(["disconnect", "resume"]);
 	});
 
+	test("the stream URL carries the collections the page shows, at the versions it holds", async () => {
+		document.body.insertAdjacentHTML("beforeend", `<ol data-tc-collection="feed" data-tc-ver="7"></ol><ol data-tc-collection="feed" data-tc-ver="5"></ol><ul data-tc-collection="fresh"></ul>`);
+		const first = connected();
+		expect(new URL(first.url, "http://x").searchParams.get("c")).toBe("drops.list:1,feed:5,fresh");
+		first.open();
+		first.frame({ kind: "ready" });
+		document.querySelector('[data-tc-collection="drops.list"]')!.setAttribute("data-tc-ver", "3");
+		const es = await tear(first);
+		expect(new URL(es.url, "http://x").searchParams.get("c")).toContain("drops.list:3");
+	});
+
 	test("ops missed while torn arrive after the reconnect and apply from the version the page holds", async () => {
 		const first = connected();
 		first.open();
