@@ -32,9 +32,9 @@ its logins in a store.
   `s.CommandRequest()`: the command runs only while that cookie is signed
   in as the page's user. A command raised with someone else's session id
   or after logout answers 401; `requireAdmin` answers 403 to a viewer.
-  `TestCommandAuthorization` (`main_test.go`) runs these cases through
-  the HTTP endpoints: livetest sessions carry no page-token params
-  ([#51](https://github.com/nkapatos/templatic/issues/51)).
+  `TestCommandAuthorization` (`main_test.go`) runs these cases with
+  livetest: `livetest.Param` gives a page its token's user and
+  `livetest.Request` its login cookie.
 - **The UI follows the role, the server enforces it.** `Board` renders the
   notice form only for admins (`components/pages.templ`); a viewer who
   raises `notice.post` by hand still gets 403.
@@ -63,7 +63,7 @@ runtime only logs a warning
 |---|---|
 | `main.go` | the world, the command handlers, the routes, cross-origin protection |
 | `auth.go` | the demo users, the login table, `signedIn`, `commandUser`, `requireAdmin` |
-| `main_test.go` | command authorization through the HTTP endpoints |
+| `main_test.go` | command authorization with livetest |
 | `components/board.go` | `User`, the commands and their inputs |
 | `components/pages.templ` | the login page, the board, the activity log |
 | `components/layout.templ` | the document, the signed-in header with logout, `Head`, `Boot` |

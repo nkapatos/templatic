@@ -46,10 +46,7 @@ watchers side by side with
   when it compiles the same CSS, so the regenerated `*_templ.go` files do
   not loop the two.
 
-Ctrl-C stops both watchers and the app. After the app has been restarted
-once, the restarted app keeps running and holds the port: `templatic dev`
-stops only the first app process on exit (fixed by
-[#55](https://github.com/nkapatos/templatic/pull/55)).
+Ctrl-C stops both watchers and the app.
 
 ## What it shows
 
