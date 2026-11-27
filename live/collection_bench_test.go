@@ -152,7 +152,6 @@ func TestCollectionSessionsLeaveNoTrace(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		w := NewWorld(WithResumeGrace(30 * time.Second))
 		c := filled(w, "log", 100)
-		baseline := runtime.NumGoroutine()
 		for round := range 50 {
 			vs := make([]*viewer, 20)
 			for i := range vs {
@@ -183,8 +182,8 @@ func TestCollectionSessionsLeaveNoTrace(t *testing.T) {
 		if sessions != 0 || subs != 0 {
 			t.Fatalf("after expiry: %d sessions, %d subscribers left", sessions, subs)
 		}
-		if n := runtime.NumGoroutine(); n > baseline {
-			t.Fatalf("goroutines: %d, baseline %d", n, baseline)
-		}
+		// A goroutine left behind is caught by synctest.Test itself, which fails when
+		// the bubble's goroutines are still blocked as f returns; runtime.NumGoroutine
+		// would count other tests' goroutines too.
 	})
 }
