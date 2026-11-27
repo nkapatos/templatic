@@ -5,7 +5,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -163,7 +166,7 @@ func TestDevExecRestartsOnGoChange(t *testing.T) {
 	d := &devLoop{
 		opts: generate.Options{Root: root, SkipBundle: true, Mode: generate.ModeDev},
 		root: root, client: "client", dist: ".templatic/dist",
-		exec:     "echo start >> starts.log; exec sleep 30",
+		exec:     "echo $$ >> starts.log; exec sleep 30",
 		debounce: 30 * time.Millisecond,
 		stdout:   &bytes.Buffer{}, stderr: &bytes.Buffer{},
 	}
@@ -172,10 +175,11 @@ func TestDevExecRestartsOnGoChange(t *testing.T) {
 	go func() { d.run(ctx); close(done) }()
 	defer func() { cancel(); <-done }()
 
-	starts := func() int {
+	pids := func() []string {
 		b, _ := os.ReadFile(log)
-		return bytes.Count(b, []byte("start"))
+		return strings.Fields(string(b))
 	}
+	starts := func() int { return len(pids()) }
 	waitFor := func(n int) {
 		t.Helper()
 		deadline := time.Now().Add(5 * time.Second)
@@ -191,6 +195,15 @@ func TestDevExecRestartsOnGoChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(2)
+
+	cancel()
+	<-done
+	for _, p := range pids() {
+		pid, _ := strconv.Atoi(p)
+		if proc, err := os.FindProcess(pid); err == nil && proc.Signal(syscall.Signal(0)) == nil {
+			t.Errorf("app process %d still runs after dev stopped", pid)
+		}
+	}
 }
 
 func copyFixture(t *testing.T) string {

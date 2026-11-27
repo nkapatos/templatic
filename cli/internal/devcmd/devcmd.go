@@ -91,7 +91,7 @@ func (d *devLoop) run(ctx context.Context) int {
 	p = pending{}
 	if d.exec != "" {
 		d.app = startApp(d.exec, d.root, d.stdout, d.stderr)
-		defer d.app.stop()
+		defer func() { d.app.stop() }() // the app running at exit, not the first one
 	}
 	fmt.Fprintf(d.stdout, "dev: watching %s (ctrl-c to stop)\n", d.root)
 	quiet := time.NewTimer(time.Hour)
