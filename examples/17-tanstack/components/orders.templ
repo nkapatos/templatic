@@ -1,0 +1,42 @@
+package components
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// The body is the fallback: every order in a plain table, in id order.
+// The lit element replaces it with the sortable, filtered, paged table.
+//
+//templatic:island tag=order-table props=TableProps variant=lit bind=orders:orders.all
+templ OrderTable(props TableProps) {
+	<div class="fallback">
+		<p>{ strconv.Itoa(len(props.Orders)) } orders. Sorting, search and paging need JavaScript.</p>
+		<table class="grid">
+			<thead><tr><th>#</th><th>Customer</th><th>Status</th><th>Amount</th><th>Placed</th></tr></thead>
+			<tbody>
+				for _, o := range props.Orders {
+					<tr><td>{ strconv.Itoa(o.ID) }</td><td>{ o.Customer }</td><td>{ o.Status }</td><td class="num">{ Money(o.Amount) }</td><td>{ o.Placed }</td></tr>
+				}
+			</tbody>
+		</table>
+	</div>
+}
+
+// TablePage is the orders table.
+templ TablePage(props TableProps) {
+	@Layout("Table") {
+		<h1>Orders</h1>
+		<p>
+			All orders ship with the page; sorting, search and paging run in
+			the browser. The server changes a few orders every few seconds,
+			and every open table keeps its own sort, search and page.
+		</p>
+		@OrderTableIsland(props)
+	}
+}
+
+// Money formats cents as dollars.
+func Money(cents int) string {
+	return fmt.Sprintf("$%d.%02d", cents/100, cents%100)
+}

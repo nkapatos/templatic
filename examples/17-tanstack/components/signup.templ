@@ -1,0 +1,55 @@
+package components
+
+import (
+	"strings"
+
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// The body is the fallback: the same command as a plain form, which works
+// without JavaScript. The lit element replaces it with a lit-form form.
+//
+//templatic:island tag=signup-form props=SignupProps variant=lit
+templ SignupForm(props SignupProps, failed ui.Option) {
+	@ui.FormFor(Register, "/signup", failed) {
+		@ui.FormError()
+		<label>
+			Username
+			<input name="username" value={ ui.FieldValue(ctx, "username", "") } autocomplete="username"/>
+			@ui.FieldError("username")
+		</label>
+		<label>
+			Email
+			<input name="email" type="email" value={ ui.FieldValue(ctx, "email", "") } autocomplete="email"/>
+			@ui.FieldError("email")
+		</label>
+		<label>
+			Plan
+			<select name="plan">
+				<option value="">choose…</option>
+				for _, p := range props.Plans {
+					<option value={ p } selected?={ ui.FieldValue(ctx, "plan", "") == p }>{ p }</option>
+				}
+			</select>
+			@ui.FieldError("plan")
+		</label>
+		<button type="submit">Sign up</button>
+	}
+}
+
+// SignupPage is the form above the live list of taken names; failed is nil on a
+// plain render and ui.Failed after a refused no-JS POST.
+templ SignupPage(props SignupProps, failed ui.Option, taken *live.Cell[string]) {
+	@Layout("Sign up") {
+		<h1>Sign up</h1>
+		<p>
+			The form checks each field while you type; the server's
+			<code>Validate</code> and the handler still decide. Try a taken
+			or reserved name: { strings.Join(Reserved, ", ") }.
+		</p>
+		@SignupFormIsland(props, failed)
+		<h2>Taken names</h2>
+		<p>@ui.Cell(taken)</p>
+	}
+}

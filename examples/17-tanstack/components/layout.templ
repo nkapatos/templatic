@@ -1,0 +1,24 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · tanstack</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+		</head>
+		<body>
+			<nav><a href="/">Log</a> <a href="/table">Table</a> <a href="/signup">Sign up</a></nav>
+			<main>
+				{ children... }
+			</main>
+			// Boot comes after the island, so it preloads the island's module.
+			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+		</body>
+	</html>
+}
