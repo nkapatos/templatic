@@ -10,6 +10,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/a-h/templ"
@@ -238,7 +239,14 @@ func (c *Collection[T]) Reset(items []T) error {
 }
 
 // Render writes the container with the current items and the version they are at.
-func (c *Collection[T]) Render(ctx context.Context, w io.Writer) error {
+func (c *Collection[T]) Render(ctx context.Context, w io.Writer) error { return c.render0(ctx, w, nil) }
+
+// With renders the container with attrs added to it, such as a class; the collection's own attributes win.
+func (c *Collection[T]) With(attrs templ.Attributes) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error { return c.render0(ctx, w, attrs) })
+}
+
+func (c *Collection[T]) render0(ctx context.Context, w io.Writer, attrs templ.Attributes) error {
 	c.mu.Lock()
 	keys := make([]string, len(c.order))
 	for i, k := range c.order {
@@ -246,7 +254,22 @@ func (c *Collection[T]) Render(ctx context.Context, w io.Writer) error {
 	}
 	items, version := c.itemsLocked(), c.version
 	c.mu.Unlock()
-	if _, err := io.WriteString(w, c.openTag(version)); err != nil {
+	open := c.openTag(version)
+	if _, err := io.WriteString(w, open[:len(open)-1]); err != nil {
+		return err
+	}
+	if len(attrs) > 0 {
+		extra := maps.Clone(attrs)
+		for k := range extra {
+			if strings.HasPrefix(k, "data-tc-") {
+				delete(extra, k)
+			}
+		}
+		if err := templruntime.RenderAttributes(ctx, w, io.Discard, c.container, extra); err != nil {
+			return err
+		}
+	}
+	if _, err := io.WriteString(w, ">"); err != nil {
 		return err
 	}
 	for i, it := range items {
@@ -482,4 +505,112 @@ func validElement(name string) bool {
 		}
 	}
 	return true
+}
+
+// CollectionFamily is a collection per entity, such as a thread per conversation, under one topic prefix; its members
+// share their configuration. Configure it before the first Get.
+type CollectionFamily[T any] struct {
+	world *World
+	proto Collection[T]
+
+	mu      sync.Mutex
+	members map[string]*Collection[T]
+	// floor is the highest version a forgotten member reached; a new one starts above it, so a page still holding
+	// the old member's version can never look current.
+	floor uint64
+}
+
+// NewCollectionFamily declares a family of collections under prefix, their items keyed by key.
+func NewCollectionFamily[T any](w *World, prefix string, key func(T) string) *CollectionFamily[T] {
+	validateTopic(prefix)
+	if w == nil || key == nil {
+		panic(fmt.Errorf("live: collection family %q needs a world and a key func", prefix))
+	}
+	return &CollectionFamily[T]{
+		world:   w,
+		proto:   Collection[T]{topic: prefix, key: key, container: "div", item: "div", history: DefaultHistory},
+		members: map[string]*Collection[T]{},
+	}
+}
+
+// Renders sets the members' item body renderer.
+func (f *CollectionFamily[T]) Renders(fn func(T) templ.Component) *CollectionFamily[T] {
+	f.proto.render = fn
+	return f
+}
+
+// Elements sets the members' container and item element names.
+func (f *CollectionFamily[T]) Elements(container, item string) *CollectionFamily[T] {
+	f.proto.Elements(container, item)
+	return f
+}
+
+// ItemAttrs sets the attributes of the members' item root elements.
+func (f *CollectionFamily[T]) ItemAttrs(fn func(T) templ.Attributes) *CollectionFamily[T] {
+	f.proto.attrs = fn
+	return f
+}
+
+// Tail makes the members put new items after the existing ones.
+func (f *CollectionFamily[T]) Tail() *CollectionFamily[T] { f.proto.tail = true; return f }
+
+// Limit keeps at most n items per member.
+func (f *CollectionFamily[T]) Limit(n int) *CollectionFamily[T] { f.proto.limit = max(n, 0); return f }
+
+// History sets each member's catch-up budget in bytes.
+func (f *CollectionFamily[T]) History(bytes int) *CollectionFamily[T] {
+	f.proto.history = max(bytes, 0)
+	return f
+}
+
+// Topic returns the member topic for id, without creating it.
+func (f *CollectionFamily[T]) Topic(id string) string { return f.proto.topic + "." + id }
+
+// Get returns id's member, declaring it on first use; an id outside the topic grammar is an error, since ids come
+// from data.
+func (f *CollectionFamily[T]) Get(id string) (*Collection[T], error) {
+	if err := checkTopic(id); err != nil {
+		return nil, fmt.Errorf("live: collection family %q: member %q: %w", f.proto.topic, id, err)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if c, ok := f.members[id]; ok {
+		return c, nil
+	}
+	c := NewCollection(f.world, f.Topic(id), f.proto.key)
+	c.render, c.attrs, c.container, c.item = f.proto.render, f.proto.attrs, f.proto.container, f.proto.item
+	c.tail, c.limit, c.history = f.proto.tail, f.proto.limit, f.proto.history
+	c.mu.Lock()
+	c.version = max(c.version, f.floor)
+	c.mu.Unlock()
+	f.members[id] = c
+	return c, nil
+}
+
+// Forget drops id's member from the family and the world; pages still showing it stop receiving ops.
+func (f *CollectionFamily[T]) Forget(id string) {
+	f.mu.Lock()
+	c, ok := f.members[id]
+	delete(f.members, id)
+	if ok {
+		f.floor = max(f.floor, c.Version())
+	}
+	f.mu.Unlock()
+	if !ok {
+		return
+	}
+	f.world.mu.Lock()
+	if f.world.collections[c.topic] == subscribable(c) {
+		delete(f.world.collections, c.topic)
+	}
+	f.world.mu.Unlock()
+	c.mu.Lock()
+	subs := c.subs
+	c.subs = map[*Session]struct{}{}
+	c.mu.Unlock()
+	for s := range subs {
+		s.cellMu.Lock()
+		delete(s.subs, c.topic)
+		s.cellMu.Unlock()
+	}
 }

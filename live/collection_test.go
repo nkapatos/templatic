@@ -333,3 +333,12 @@ func TestCollectionHistoryKeepsItsBudget(t *testing.T) {
 		t.Fatal("since a version older than the ring must miss")
 	}
 }
+
+func TestCollectionWithAddsContainerAttributesButNotItsOwn(t *testing.T) {
+	w := NewWorld()
+	c := rows(w, "styled").Elements("ul", "li")
+	got := render(t, c.With(templ.Attributes{"class": "feed", "data-tc-collection": "other", "data-tc-ver": "99"}))
+	if got != `<ul data-tc-collection="styled" data-tc-ver="0" class="feed"></ul>` {
+		t.Fatalf("container: %s", got)
+	}
+}

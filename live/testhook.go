@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"sync"
 
 	"github.com/nkapatos/templatic/internal/livehook"
 )
@@ -25,6 +26,7 @@ func init() {
 		s.mu.Unlock()
 		s.setReportedURL(r.URL.RequestURI())
 		_, cancel := context.WithCancel(context.Background())
+		var mu sync.Mutex
 		c := newConn(cancel)
 		c.finish()
 		s.attach(c)
@@ -34,13 +36,19 @@ func init() {
 		for _, fn := range onConnect {
 			fn(s)
 		}
+		current := func() *connState {
+			mu.Lock()
+			defer mu.Unlock()
+			return c
+		}
 		return livehook.Conn{
 			Session: s,
 			Drain: func() []livehook.Event {
+				inbox := current().inbox
 				var out []livehook.Event
 				for {
 					select {
-					case ev := <-c.inbox:
+					case ev := <-inbox:
 						out = append(out, livehook.Event{Kind: ev.kind, Topic: ev.topic, Body: ev.body})
 					default:
 						return out
@@ -49,8 +57,29 @@ func init() {
 			},
 			Close: func() {
 				cancel()
-				s.detach(c)
+				s.detach(current())
 				s.retire()
+			},
+			Subscribe: s.subscribe,
+			Drop:      func() { s.detach(current()) },
+			Resume: func() bool {
+				_, cancel := context.WithCancel(context.Background())
+				next := newConn(cancel)
+				next.finish()
+				_, stale, _, retired := s.attach(next)
+				if retired || stale {
+					return false
+				}
+				mu.Lock()
+				c = next
+				mu.Unlock()
+				w.mu.RLock()
+				onResume := slices.Clone(w.onResume)
+				w.mu.RUnlock()
+				for _, fn := range onResume {
+					fn(s)
+				}
+				return true
 			},
 		}
 	}

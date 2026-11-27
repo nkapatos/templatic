@@ -22,6 +22,12 @@ type Conn struct {
 	Drain func() []Event
 	// Close detaches and retires the session.
 	Close func()
+	// Subscribe subscribes the session to collections, topic → the version the page holds (-1 for none).
+	Subscribe func(held map[string]int64) error
+	// Drop detaches the connection; the session stays resumable for the world's grace.
+	Drop func()
+	// Resume attaches a new connection to a dropped session; false means it is gone and the page would resync.
+	Resume func() bool
 }
 
 var (
