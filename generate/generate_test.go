@@ -258,8 +258,8 @@ func TestBootPhasesAreRecorded(t *testing.T) {
 func TestSwapMorphChainContainsFailures(t *testing.T) {
 	opts, _ := runApp(t)
 	live := read(t, filepath.Join(opts.Root, ".templatic", "runtime", "live.ts"))
-	if !strings.Contains(live, ".catch(") {
-		t.Fatal("runtime live.ts must contain morph-chain failures (one rejection must not poison every later swap)")
+	if !strings.Contains(live, "} catch (err) {") {
+		t.Fatal("runtime live.ts must contain each event's failure (one failed morph must not poison every later swap)")
 	}
 	if !strings.Contains(live, "tcPhase(\"live\"") {
 		t.Fatal("runtime live.ts must record a failed morph in the state record (tcPhase) so it is visible")
