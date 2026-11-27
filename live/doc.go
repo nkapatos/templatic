@@ -30,19 +30,32 @@
 // it to every connected session. A [CellFamily] is a keyed set of such cells
 // under one topic prefix, for one cell per entity.
 //
+// A cell is published whole: each change sends the entire value to every
+// connected session, whether or not its page shows the cell, and every new
+// stream starts with every world cell. That suits small values, such as a
+// count, a status or a short list. A dataset that changes item by item
+// belongs in a [Collection], whose changes cost the changed items and reach
+// only the pages that show it.
+//
 // A [Region] is a server-rendered fragment. [World.Region] declares it with a
 // render function, and [World.Redraw] re-renders it and pushes the markup to
 // all sessions. [World.Swap] pushes markup for a topic to one session.
 //
-// A [Collection] is a keyed, ordered set of items the world holds, rendered
-// by the server. [NewCollection] declares it with a key function;
+// A [Collection] is a keyed, ordered set of items the world holds.
+// [NewCollection] declares it with a key function;
 // [Collection.Upsert] and [Collection.Remove] change it, and each change is
 // published once, as a numbered op, to the sessions whose page shows the
-// collection. The page's container carries the version it was rendered at,
-// so a page that missed ops, between render and connect or while its stream
+// collection. The page carries the version it was rendered at, in the
+// container or the snapshot below, so a page that missed ops, between render and connect or while its stream
 // was down, gets them from a bounded history ([Collection.History]), or the
 // whole set once the history no longer reaches back. A [CollectionFamily]
 // holds one collection per entity.
+//
+// A collection with [Collection.Renders] is rendered by the server: its
+// container comes from [Collection.Render] and its ops carry each item's
+// markup. Without it, it is a data collection: an island props field of type
+// [Snapshot], from [Collection.Snapshot] and bound to the collection's
+// topic, seeds the page, and its ops carry each item as JSON.
 //
 // # Session state
 //
@@ -126,9 +139,10 @@
 //
 // # Wire
 //
-// The stream carries events of the kinds KindCell, KindSwap, KindAppend,
-// KindReady, KindResync and KindDev. Cell events carry a value, swap and
-// append events carry markup. Bursts of publishes are coalesced into one
+// The stream carries events of the kinds KindCell, KindSwap, KindOps,
+// KindReset, KindReady, KindResync and KindDev. Cell events carry a value and
+// swap events markup; ops and reset events carry a collection's changes or
+// its whole set at a version, as markup or as JSON items. Bursts of publishes are coalesced into one
 // flush. A session that loses its connection keeps its place for the resume
 // grace; a client that reconnects too late, whose session the server no
 // longer holds, or that cannot keep up receives a resync event instead of
