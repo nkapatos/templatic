@@ -2,4 +2,5 @@
    tooling (Tailwind, …) as an npm script; templatic only bundles it. */
 body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
 [aria-invalid="true"] { outline: 2px solid #c62828; }
-form[data-tc-error]::after { content: attr(data-tc-error); display: block; color: #c62828; }
+[data-tc-field-error], [data-tc-form-error] { display: block; color: #c62828; }
+[data-tc-field-error]:empty, [data-tc-form-error]:empty { display: none; }
