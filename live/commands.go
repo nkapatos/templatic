@@ -37,6 +37,10 @@ func (h *commandsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "live: bad command payload", http.StatusBadRequest)
 		return
 	}
+	if req.SID != "" && req.Action == "" && len(req.Subscribe) > 0 {
+		h.subscribe(w, req)
+		return
+	}
 	if req.SID == "" || req.Action == "" {
 		http.Error(w, "live: sid and action required", http.StatusBadRequest)
 		return
@@ -144,4 +148,20 @@ func (h *commandsHandler) run(w http.ResponseWriter, r *http.Request, s *Session
 	if _, err := w.Write(append(payload, '\n')); err != nil {
 		return
 	}
+}
+
+// subscribe answers 204 at once; what the page lacks arrives on its stream, after the frames already queued.
+func (h *commandsHandler) subscribe(w http.ResponseWriter, req commandRequest) {
+	h.world.mu.RLock()
+	s, ok := h.world.sessions[req.SID]
+	h.world.mu.RUnlock()
+	if !ok || s.isRetired() {
+		http.Error(w, "live: unknown session; (re)connect the stream first", http.StatusConflict)
+		return
+	}
+	if err := s.subscribe(req.Subscribe); err != nil {
+		http.Error(w, "live: subscribe failed", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

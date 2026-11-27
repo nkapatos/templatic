@@ -22,8 +22,7 @@ API documentation: https://pkg.go.dev/github.com/nkapatos/templatic/live
 | `cell.go` | `Cell`, `NewCell`, deprecated `SessionCell` |
 | `family.go` | `CellFamily`, a keyed set of cells |
 | `region.go` | `Region`, `World.Swap` |
-| `streams.go` | `Stream`, `World.Append`, `ItemClass` |
-| `streamdecl.go` | typed `StreamDecl` and `StreamFamily` |
+| `collection.go` | `Collection`, `CollectionFamily`, the op history ring, subscriptions |
 | `value.go` | `Value`, `SessionValue` (server-only session values) |
 | `declare.go` | `Command`, `DecodeForm`, `FormPOST`, session cell, value and region declarations |
 | `commands.go` | `CommandHandler` and the POST handler that dispatches commands |
@@ -33,7 +32,7 @@ API documentation: https://pkg.go.dev/github.com/nkapatos/templatic/live
 | `submit.go` | submission ids that make a repeated form POST answer the first outcome |
 | `upload.go` | `SessionFor`, `WriteInvalid` for multipart uploads |
 | `session.go` | `Session`, event queueing, attach, detach, resume, the send loop |
-| `stream.go` | the SSE handler behind `World.SSE` |
+| `stream.go` | the SSE handler behind `World.SSE`, and the collections a connecting page shows |
 | `identity.go` | page tokens: `WithKey`, `PageToken`, `TokenParam`, `SeedCell` |
 | `request.go` | `RequestInfo` and the header and cookie allowlists |
 | `strings.go` | `Strings`, a JSON string-or-array decoder for form fields |

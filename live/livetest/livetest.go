@@ -5,10 +5,13 @@
 // registered commands through their handlers and input decoding, skipping
 // the HTTP layer: [Call] and [Session.Do] with JSON-shaped input, [Submit] and
 // [Session.DoForm] with form fields. The test then reads what was pushed:
-// [Session.Swaps], [Session.LastSwap], [Session.Appends], [Session.Cell] and
-// [Session.Events]. [Session.WaitSwap] and [Session.WaitAppend] poll for a
-// swap or an append that arrives asynchronously and fail the test on
-// timeout. The session is retired when the test ends.
+// [Session.Swaps], [Session.LastSwap], [Session.Ops], [Session.Cell] and
+// [Session.Events]. [Session.WaitSwap] and [Session.WaitOp] poll for a swap or
+// a collection change that arrives asynchronously and fail the test on
+// timeout. A session receives a collection's changes once it shows it
+// ([Session.Show]), as a page that rendered it does. [Session.Drop] and
+// [Session.Resume] simulate a dropped and resumed connection. The session is
+// retired when the test ends.
 //
 // A run returns the command handler's result and error as is; a refused input
 // comes back as an error that [live.InputErrors] can list.
@@ -64,6 +67,7 @@ type Session struct {
 
 	mu     sync.Mutex
 	events []Event
+	shown  map[string]uint64 // collections shown, at the version Show gave
 }
 
 // Option configures New.
@@ -160,6 +164,17 @@ func (s *Session) commandRequest() *http.Request {
 func (s *Session) collect() []Event {
 	evs := s.conn.Drain()
 	s.mu.Lock()
+	for _, ev := range evs {
+		// a shown collection's page now holds the version this event ends at
+		if held, ok := s.shown[ev.Topic]; ok && (ev.Kind == live.KindOps || ev.Kind == live.KindReset) {
+			var b struct {
+				Ver uint64 `json:"ver"`
+			}
+			if json.Unmarshal(ev.Body, &b) == nil && b.Ver > held {
+				s.shown[ev.Topic] = b.Ver
+			}
+		}
+	}
 	s.events = append(s.events, evs...)
 	out := append([]Event(nil), s.events...)
 	s.mu.Unlock()
@@ -201,40 +216,104 @@ func (s *Session) LastSwap(topic string) (string, bool) {
 	return sw[len(sw)-1], true
 }
 
-// WaitAppend waits up to d for an item appended to stream topic containing substr.
-func (s *Session) WaitAppend(topic, substr string, d time.Duration) string {
+// Op is one recorded collection change: Kind "u" (an upsert, HTML the item), "d" (a removal) or "reset" (HTML every
+// item, Key empty), at Version.
+type Op struct {
+	Kind    string
+	Key     string
+	HTML    string
+	Version uint64
+}
+
+// Show subscribes the session to collection topic as a page that rendered it at version held does; it then
+// receives what that page lacks, and every later change.
+func (s *Session) Show(topic string, held uint64) {
+	s.t.Helper()
+	if err := s.conn.Subscribe(map[string]int64{topic: int64(held)}); err != nil {
+		s.t.Fatalf("livetest: show %s: %v", topic, err)
+	}
+	s.mu.Lock()
+	if s.shown == nil {
+		s.shown = map[string]uint64{}
+	}
+	s.shown[topic] = max(s.shown[topic], held)
+	s.mu.Unlock()
+	s.collect()
+}
+
+// Ops returns every recorded change of collection topic, oldest first.
+func (s *Session) Ops(topic string) []Op {
+	var out []Op
+	for _, ev := range s.collect() {
+		if ev.Topic != topic {
+			continue
+		}
+		var b struct {
+			Ver  uint64 `json:"ver"`
+			HTML string `json:"html"`
+			Ops  []struct {
+				Op   string `json:"op"`
+				K    string `json:"k"`
+				HTML string `json:"html"`
+			} `json:"ops"`
+		}
+		switch ev.Kind {
+		case live.KindOps:
+			_ = json.Unmarshal(ev.Body, &b)
+			first := b.Ver - uint64(len(b.Ops)) + 1
+			for i, op := range b.Ops {
+				out = append(out, Op{Kind: op.Op, Key: op.K, HTML: op.HTML, Version: first + uint64(i)})
+			}
+		case live.KindReset:
+			_ = json.Unmarshal(ev.Body, &b)
+			out = append(out, Op{Kind: "reset", HTML: b.HTML, Version: b.Ver})
+		}
+	}
+	return out
+}
+
+// WaitOp waits up to d for a change of collection topic whose HTML contains substr (any change when substr is "").
+func (s *Session) WaitOp(topic, substr string, d time.Duration) Op {
 	s.t.Helper()
 	deadline := time.Now().Add(d)
 	for {
-		for _, h := range s.Appends(topic) {
-			if strings.Contains(h, substr) {
-				return h
+		for _, op := range s.Ops(topic) {
+			if strings.Contains(op.HTML, substr) {
+				return op
 			}
 		}
 		if time.Now().After(deadline) {
-			s.t.Fatalf("livetest: no append to %s containing %q within %v", topic, substr, d)
+			s.t.Fatalf("livetest: no change of %s containing %q within %v", topic, substr, d)
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
 }
 
-// Appends returns the item HTML of every append to stream topic.
-func (s *Session) Appends(topic string) []string {
-	var out []string
-	for _, ev := range s.collect() {
-		if ev.Kind == live.KindAppend && ev.Topic == topic {
-			var b struct {
-				Items []struct {
-					HTML string `json:"html"`
-				} `json:"items"`
-			}
-			_ = json.Unmarshal(ev.Body, &b)
-			for _, it := range b.Items {
-				out = append(out, it.HTML)
-			}
-		}
+// Drop detaches the session's connection, as a page losing its stream does; the session stays resumable for the
+// world's grace, and changes published meanwhile are not recorded.
+func (s *Session) Drop() {
+	s.collect()
+	s.conn.Drop()
+}
+
+// Resume reattaches a dropped session and shows its collections again at the versions it last received, as the
+// page would on reconnect; false means the session is gone and the page would resync.
+func (s *Session) Resume() bool {
+	s.t.Helper()
+	if !s.conn.Resume() {
+		return false
 	}
-	return out
+	held := map[string]int64{}
+	s.mu.Lock()
+	for topic, v := range s.shown {
+		held[topic] = int64(v)
+	}
+	s.mu.Unlock()
+	if err := s.conn.Subscribe(held); err != nil {
+		s.t.Fatalf("livetest: resume: %v", err)
+	}
+	s.collect()
+	return true
 }
 
 // Cell decodes the current value of cell topic into v and reports whether it

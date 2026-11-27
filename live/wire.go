@@ -6,7 +6,8 @@ import "encoding/json/jsontext"
 const (
 	KindCell   = "cell"
 	KindSwap   = "swap"
-	KindAppend = "append"
+	KindOps    = "ops"
+	KindReset  = "reset"
 	KindReady  = "ready"
 	KindResync = "resync"
 	KindDev    = "dev"
@@ -20,16 +21,12 @@ type event struct {
 	version uint64
 }
 
-// Keys follow the topic grammar because the client uses them in query selectors.
-type streamItem struct {
-	K    string `json:"k"`
-	HTML string `json:"html"`
-}
-
 type commandRequest struct {
 	SID    string         `json:"sid"`
 	Action string         `json:"action"`
 	Args   jsontext.Value `json:"args"`
 	Form   *string        `json:"form"`
 	Submit string         `json:"submit,omitempty"`
+	// Subscribe, sent with no action, maps collection topics to the version the page holds.
+	Subscribe map[string]int64 `json:"subscribe,omitempty"`
 }

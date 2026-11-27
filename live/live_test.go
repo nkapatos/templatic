@@ -349,9 +349,19 @@ func openStream(t *testing.T, ts *httptest.Server, sid string) *stream {
 
 func openStreamWithHeaders(t *testing.T, ts *httptest.Server, sid string, headers map[string]string) *stream {
 	t.Helper()
+	return openStreamQuery(t, ts, sid, "", headers)
+}
+
+// openStreamQuery opens sid's stream with extra appended to the query, such as "c=feed:3".
+func openStreamQuery(t *testing.T, ts *httptest.Server, sid, extra string, headers map[string]string) *stream {
+	t.Helper()
 	wv, _ := servedWorlds.Load(ts.URL)
 	wOf := wv.(*World)
-	req, err := http.NewRequest("GET", ts.URL+"/live/stream?t="+url.QueryEscape(tokenFor(wOf, sid)), nil)
+	q := "t=" + url.QueryEscape(tokenFor(wOf, sid))
+	if extra != "" {
+		q += "&" + extra
+	}
+	req, err := http.NewRequest("GET", ts.URL+"/live/stream?"+q, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

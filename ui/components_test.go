@@ -289,47 +289,6 @@ func TestRegionRendersAsTemplComponent(t *testing.T) {
 	}
 }
 
-func TestStreamEmitsContainer(t *testing.T) {
-	got := render(t, ui.Stream("drops.list", ctxComp(`<div data-tc-item="d-1">ok</div>`)))
-	if got != `<div data-tc-stream="drops.list"><div data-tc-item="d-1">ok</div></div>` {
-		t.Fatalf("stream container wrong: %q", got)
-	}
-}
-
-func TestStreamTailOptionEmitsDirection(t *testing.T) {
-	got := render(t, ui.Stream("brain.conv.a1", ctxComp(`<div data-tc-item="a1-1">hi</div>`), ui.Tail()))
-	if got != `<div data-tc-stream="brain.conv.a1" data-tc-dir="tail"><div data-tc-item="a1-1">hi</div></div>` {
-		t.Fatalf("tail stream container wrong: %q", got)
-	}
-	plain := render(t, ui.Stream("drops.list", nil))
-	if plain != `<div data-tc-stream="drops.list"></div>` {
-		t.Fatalf("default stream container must not carry a direction: %q", plain)
-	}
-}
-
-func TestStreamItemMatchesAppendWrapper(t *testing.T) {
-	got := render(t, ui.StreamItem("d-1", ctxComp("<p>ok</p>")))
-	if got != `<div data-tc-item="d-1"><p>ok</p></div>` {
-		t.Fatalf("stream item wrapper wrong: %q", got)
-	}
-}
-
-func TestStreamRejectBadNames(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected panic on malformed stream topic")
-		}
-	}()
-	_ = ui.Stream("bad name!", nil)
-}
-
-func TestStreamItemRejectsBadKey(t *testing.T) {
-	var buf bytes.Buffer
-	if err := ui.StreamItem("bad key!", nil).Render(context.Background(), &buf); err == nil || buf.Len() != 0 {
-		t.Fatalf("err %v, wrote %q", err, buf.String())
-	}
-}
-
 func TestIslandKeepsScriptEndInsidePropsTag(t *testing.T) {
 	got := render(t, ui.Island("x-chart", map[string]string{"t": `</script><script>alert(1)</script>`}, nil))
 	if strings.Contains(got, "<script>alert(1)") || strings.Count(got, "</script>") != 1 {

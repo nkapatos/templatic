@@ -34,11 +34,15 @@
 // render function, and [World.Redraw] re-renders it and pushes the markup to
 // all sessions. [World.Swap] pushes markup for a topic to one session.
 //
-// A [Stream] is an append-only list of keyed items. [World.Append] adds one
-// item for every session; a session that connects later gets the stream
-// replayed by its render function. [DeclareStream] builds a typed stream
-// from a key function and an item renderer, and [DeclareStreamFamily] builds
-// one stream per entity.
+// A [Collection] is a keyed, ordered set of items the world holds, rendered
+// by the server. [NewCollection] declares it with a key function;
+// [Collection.Upsert] and [Collection.Remove] change it, and each change is
+// published once, as a numbered op, to the sessions whose page shows the
+// collection. The page's container carries the version it was rendered at,
+// so a page that missed ops, between render and connect or while its stream
+// was down, gets them from a bounded history ([Collection.History]), or the
+// whole set once the history no longer reaches back. A [CollectionFamily]
+// holds one collection per entity.
 //
 // # Session state
 //

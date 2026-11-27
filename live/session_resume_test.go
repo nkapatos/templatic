@@ -179,21 +179,21 @@ func TestTornWorldCellAndRegionArrive(t *testing.T) {
 	}
 }
 
-func TestTornStreamAppendCatchesUp(t *testing.T) {
+func TestTornStreamCatchesUpACollection(t *testing.T) {
 	w := NewWorld(WithResumeGrace(5 * time.Second))
-	w.Stream("drops.list", func() templ.Component { return htmlComp("<i>truth</i>") })
+	c := rows(w, "drops.list")
 	ts := serveWorld(t, w)
-	a := openStream(t, ts, "p4")
+	a := openStreamQuery(t, ts, "p4", "c=drops.list:0", nil)
 	readUntilReady(t, a)
 	drop(t, w, "p4", a)
-	if err := w.Append("drops.list", "d1", htmlComp("x")); err != nil {
+	if err := c.Upsert(row{"d1", "missed"}); err != nil {
 		t.Fatal(err)
 	}
-	b := openStreamWithHeaders(t, ts, "p4", reconnectHeader)
+	b := openStreamQuery(t, ts, "p4", "c=drops.list:0", reconnectHeader)
 	readUntilReady(t, b)
-	f, ok := b.next(t, 2*time.Second)
-	if !ok || !strings.Contains(f, `"kind":"swap"`) || !strings.Contains(f, "truth") {
-		t.Fatalf("stream catch-up swap missing after reattach: %q ok=%v", f, ok)
+	f, ok := nextCollectionFrame(t, b, "drops.list")
+	if !ok || f.Kind != "ops" || f.Ver != 1 || len(f.Ops) != 1 || f.Ops[0].K != "d1" {
+		t.Fatalf("the op missed while detached must arrive after reattach: %+v ok=%v", f, ok)
 	}
 }
 
@@ -325,7 +325,7 @@ func TestDetachedOfferDropsNonSwaps(t *testing.T) {
 	drop(t, w, "p10", a)
 	for i := 0; i < 5000; i++ {
 		s.offer(event{kind: KindCell, topic: "tick", body: []byte(`{"v":1}`)})
-		s.offer(event{kind: KindAppend, topic: "list", body: []byte(`{"items":[]}`)})
+		s.offer(event{kind: KindOps, topic: "list", body: []byte(`{"ver":1,"ops":[]}`)})
 	}
 	s.mu.Lock()
 	n := len(s.cache)
