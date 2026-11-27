@@ -60,6 +60,7 @@ type Session struct {
 	*live.Session
 	t    testing.TB
 	conn livehook.Conn
+	req  *http.Request // New's request; commands carry its header
 
 	mu     sync.Mutex
 	events []Event
@@ -69,15 +70,28 @@ type Session struct {
 type Option func(*config)
 
 type config struct {
-	sid string
-	req *http.Request
+	sid    string
+	req    *http.Request
+	params map[string]string
 }
 
 // SID sets the session id (default: a unique one per New).
 func SID(sid string) Option { return func(c *config) { c.sid = sid } }
 
-// Request sets the request the connect and every Call are captured from.
+// Request sets the request the connect is captured from; every command run
+// carries its header, cookies included.
 func Request(r *http.Request) Option { return func(c *config) { c.req = r } }
+
+// Param adds a page-token param, as [live.TokenParam] would; handlers read it
+// from [live.Session.Params].
+func Param(key, value string) Option {
+	return func(c *config) {
+		if c.params == nil {
+			c.params = map[string]string{}
+		}
+		c.params[key] = value
+	}
+}
 
 var seq atomic.Uint64
 
@@ -91,8 +105,8 @@ func New(t testing.TB, w *live.World, opts ...Option) *Session {
 	if cfg.req == nil {
 		cfg.req = httptest.NewRequest("GET", "/", nil)
 	}
-	conn := livehook.Connect(w, cfg.sid, cfg.req)
-	s := &Session{Session: conn.Session.(*live.Session), t: t, conn: conn}
+	conn := livehook.Connect(w, cfg.sid, cfg.params, cfg.req)
+	s := &Session{Session: conn.Session.(*live.Session), t: t, conn: conn, req: cfg.req}
 	t.Cleanup(conn.Close)
 	return s
 }
@@ -108,7 +122,7 @@ func (s *Session) Do(action string, args any) (any, error) {
 		}
 		raw = b
 	}
-	res, err := livehook.Dispatch(s.Session, action, raw, nil, httptest.NewRequest("POST", "/live/commands", nil))
+	res, err := livehook.Dispatch(s.Session, action, raw, nil, s.commandRequest())
 	s.collect()
 	return res, err
 }
@@ -125,7 +139,7 @@ func (s *Session) DoForm(action string, form url.Values) (any, error) {
 	if form == nil {
 		form = url.Values{}
 	}
-	res, err := livehook.Dispatch(s.Session, action, nil, form, httptest.NewRequest("POST", "/live/commands", nil))
+	res, err := livehook.Dispatch(s.Session, action, nil, form, s.commandRequest())
 	s.collect()
 	return res, err
 }
@@ -134,6 +148,13 @@ func (s *Session) DoForm(action string, form url.Values) (any, error) {
 func Submit[In any](s *Session, cmd *live.Command[In], form url.Values) (any, error) {
 	s.t.Helper()
 	return s.DoForm(cmd.Name(), form)
+}
+
+func (s *Session) commandRequest() *http.Request {
+	r := httptest.NewRequest("POST", "/live/commands", nil)
+	r.Header = s.req.Header.Clone()
+	r.RemoteAddr = s.req.RemoteAddr
+	return r
 }
 
 func (s *Session) collect() []Event {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -111,4 +113,33 @@ func TestSessionsAreIsolatedAndBroadcastsReachAll(t *testing.T) {
 	}
 	b.WaitAppend("notes.log", "", time.Second)
 	a.WaitSwap("note.surface", "slow", time.Second)
+}
+
+func TestParamsAndRequestReachCommands(t *testing.T) {
+	w := live.NewWorld(live.WithRequestCookies("auth"))
+	type seen struct {
+		user   string
+		cookie string
+	}
+	var got seen
+	w.Command("who", func(s *live.Session, _ live.Args) (any, error) {
+		got.user = s.Params()["user"]
+		if c, ok := s.CommandRequest().Cookie("auth"); ok {
+			got.cookie = c.Value
+		}
+		return nil, nil
+	})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	r.AddCookie(&http.Cookie{Name: "auth", Value: "alice-login"})
+	s := livetest.New(t, w, livetest.Param("user", "alice"), livetest.Request(r))
+	if _, err := s.Do("who", nil); err != nil {
+		t.Fatal(err)
+	}
+	if want := (seen{"alice", "alice-login"}); got != want {
+		t.Fatalf("command saw %+v, want %+v", got, want)
+	}
+	if p := s.Request().Params["user"]; p != "alice" {
+		t.Fatalf("connect request params: user = %q", p)
+	}
 }
