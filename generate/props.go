@@ -327,6 +327,9 @@ func (c *tsConv) tsType(t types.Type) string {
 			// live.Strings is always an array in props: the server marshals the slice.
 			case liveImport + ".Strings":
 				return "string[]"
+			// The runtime unwraps a bound collection's snapshot into its items.
+			case liveImport + ".Snapshot":
+				return c.sliceTS(t.TypeArgs().At(0))
 			}
 		}
 		// v2 prefers a type's own marshaler to its structure.

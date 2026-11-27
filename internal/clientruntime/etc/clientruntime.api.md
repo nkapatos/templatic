@@ -15,6 +15,16 @@ export interface Cell<T> {
 export function cell<T = unknown>(topic: string): Cell<T>;
 
 // @public
+export interface Collection<T> {
+    get(key: string): T | undefined;
+    items(): readonly T[];
+    subscribe(fn: (items: readonly T[], ops: readonly DataOp<T>[] | null) => void): Unsubscribe;
+}
+
+// @public
+export function collection<T = unknown>(topic: string): Collection<T>;
+
+// @public
 export class CommandError extends Error {
     constructor(action: string, status: number, input?: {
         fields?: Record<string, string>;
@@ -26,6 +36,16 @@ export class CommandError extends Error {
     readonly formError: string;
     // (undocumented)
     readonly status: number;
+}
+
+// @public
+export interface DataOp<T = unknown> {
+    // (undocumented)
+    k: string;
+    // (undocumented)
+    op: "u" | "d";
+    // (undocumented)
+    v?: T;
 }
 
 // @public

@@ -5,6 +5,8 @@ import { tcState, type TcState } from "./tc";
 
 export { cell, on, onReady } from "./tc";
 export type { Cell, LiveEvent, LiveRecord, TcEvents, TcState, Unsubscribe } from "./tc";
+export { collection } from "./data";
+export type { Collection, DataOp } from "./data";
 export { CommandError } from "./commands";
 export type { IslandContext } from "./context";
 export { defineHook } from "./hooks";

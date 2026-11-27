@@ -21,7 +21,9 @@ import (
 const DefaultHistory = 64 << 10
 
 // Collection is a keyed, ordered set of items the world holds; each change is published once, as a versioned op, to
-// the sessions whose page shows it. Configure it before first use.
+// the sessions whose page shows it. With Renders its ops carry each item's HTML for the container Render writes;
+// without, they carry the item as JSON for the islands bound to its topic through Snapshot. Configure it before
+// first use.
 type Collection[T any] struct {
 	world     *World
 	topic     string
@@ -65,7 +67,8 @@ func NewCollection[T any](w *World, topic string, key func(T) string) *Collectio
 	return c
 }
 
-// Renders sets the item body renderer; the item's root element and key come from the collection.
+// Renders sets the item body renderer, making the collection server-rendered; the item's root element and key come
+// from the collection.
 func (c *Collection[T]) Renders(fn func(T) templ.Component) *Collection[T] { c.render = fn; return c }
 
 // Elements sets the container and item element names, such as "tbody" and "tr" (default "div" and "div").
@@ -151,11 +154,7 @@ func (c *Collection[T]) Upsert(items ...T) error {
 		if err := checkTopic(k); err != nil {
 			return fmt.Errorf("live: collection %q: item key %q: %w", c.topic, k, err)
 		}
-		html, err := c.renderItem(it, k)
-		if err != nil {
-			return err
-		}
-		op, err := upsertOp(k, html)
+		op, err := c.upsertOp(it, k)
 		if err != nil {
 			return err
 		}
@@ -188,11 +187,7 @@ func (c *Collection[T]) Update(key string, fn func(old T) T) (bool, error) {
 	if k := c.key(next); k != key {
 		return true, fmt.Errorf("live: collection %q: Update changed key %q to %q", c.topic, key, k)
 	}
-	html, err := c.renderItem(next, key)
-	if err != nil {
-		return true, err
-	}
-	op, err := upsertOp(key, html)
+	op, err := c.upsertOp(next, key)
 	if err != nil {
 		return true, err
 	}
@@ -201,7 +196,23 @@ func (c *Collection[T]) Update(key string, fn func(old T) T) (bool, error) {
 	return true, nil
 }
 
-func upsertOp(key, html string) (jsontext.Value, error) {
+// upsertOp is {"op":"u","k":key} with the item's HTML, or with its JSON for a data collection.
+func (c *Collection[T]) upsertOp(it T, key string) (jsontext.Value, error) {
+	if c.render == nil {
+		v, err := json.Marshal(it)
+		if err != nil {
+			return nil, fmt.Errorf("live: collection %q: item %q: %w", c.topic, key, err)
+		}
+		return json.Marshal(struct {
+			Op string         `json:"op"`
+			K  string         `json:"k"`
+			V  jsontext.Value `json:"v"`
+		}{"u", key, v})
+	}
+	html, err := c.renderItem(it, key)
+	if err != nil {
+		return nil, err
+	}
 	return json.Marshal(struct {
 		Op   string `json:"op"`
 		K    string `json:"k"`
@@ -277,6 +288,9 @@ func (c *Collection[T]) With(attrs templ.Attributes) templ.Component {
 }
 
 func (c *Collection[T]) render0(ctx context.Context, w io.Writer, attrs templ.Attributes) error {
+	if c.render == nil {
+		panic(fmt.Errorf("live: collection %q has no Renders: bind it to an island through Snapshot instead", c.topic))
+	}
 	c.mu.Lock()
 	keys := make([]string, len(c.order))
 	for i, k := range c.order {
@@ -413,6 +427,14 @@ func (c *Collection[T]) resetBodyLocked() (jsontext.Value, error) {
 	if c.reset.body != nil && c.reset.version == c.version {
 		return c.reset.body, nil
 	}
+	if c.render == nil {
+		body, err := c.snapshotLocked().MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		c.reset.version, c.reset.body = c.version, body
+		return body, nil
+	}
 	var buf bytes.Buffer
 	for i := range c.order {
 		k := c.order[c.displayIndex(i)]
@@ -429,6 +451,62 @@ func (c *Collection[T]) resetBodyLocked() (jsontext.Value, error) {
 	}
 	c.reset.version, c.reset.body = c.version, body
 	return body, nil
+}
+
+// Snapshot returns the items and the version they are at, read together, for an island prop bound to the
+// collection's topic; it panics on a collection with Renders, whose ops carry HTML.
+func (c *Collection[T]) Snapshot() Snapshot[T] {
+	if c.render != nil {
+		panic(fmt.Errorf("live: collection %q has Renders: render it with Render instead of binding a Snapshot", c.topic))
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.snapshotLocked()
+}
+
+func (c *Collection[T]) snapshotLocked() Snapshot[T] {
+	keys := make([]string, len(c.order))
+	for i, k := range c.order {
+		keys[c.displayIndex(i)] = k
+	}
+	return Snapshot[T]{version: c.version, keys: keys, items: c.itemsLocked(), tail: c.tail, limit: c.limit}
+}
+
+// Snapshot is a data collection's items, in display order, at one version. As an island props field bound to the
+// collection's topic it seeds the page, which then receives the ops after that version; the field's TypeScript type
+// is the items' array.
+type Snapshot[T any] struct {
+	version uint64
+	keys    []string
+	items   []T
+	tail    bool
+	limit   int
+}
+
+// Version returns the version the items are at.
+func (s Snapshot[T]) Version() uint64 { return s.version }
+
+// Items returns the items in display order.
+func (s Snapshot[T]) Items() []T { return s.items }
+
+// MarshalJSON writes {"tc":"snapshot","ver","tail","limit","items":[{"k","v"}…]}: the page needs the keys to apply
+// ops and the order rules to place and trim inserts.
+func (s Snapshot[T]) MarshalJSON() ([]byte, error) {
+	type entry struct {
+		K string `json:"k"`
+		V T      `json:"v"`
+	}
+	entries := make([]entry, len(s.items))
+	for i, it := range s.items {
+		entries[i] = entry{s.keys[i], it}
+	}
+	return json.Marshal(struct {
+		TC    string  `json:"tc"`
+		Ver   uint64  `json:"ver"`
+		Tail  bool    `json:"tail,omitzero"`
+		Limit int     `json:"limit,omitzero"`
+		Items []entry `json:"items"`
+	}{"snapshot", s.version, s.tail, s.limit, entries})
 }
 
 // subscribe makes s receive the collection's ops, first sending what a page at version held lacks: the ops since

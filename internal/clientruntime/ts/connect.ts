@@ -2,7 +2,7 @@
 // The stream closes on pagehide: Chromium keeps a page it holds in the back/forward cache streaming, so each
 // navigation would pin one of the origin's HTTP/1.1 connections until the cache evicts the page (about 60s).
 
-import { heldParam } from "./collections";
+import { heldParam } from "./subscribe";
 import { apply, type WireEvent } from "./live";
 import { markLiveOpen, pageToken, readConfig, recordLive } from "./tc";
 
