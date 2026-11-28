@@ -45,7 +45,7 @@ func openToken2(t *testing.T, ts *httptest.Server, query string, headers map[str
 		t.Fatalf("token connect status %d", resp.StatusCode)
 	}
 	sc := bufio.NewScanner(resp.Body)
-	return &stream{body: resp.Body, sc: sc}
+	return &stream{body: resp.Body, sc: sc, tokenKey: resp}
 }
 
 func claimsOf(t *testing.T, w *World, token string) tokenClaims {
@@ -274,6 +274,7 @@ func TestClientReportedURLReachesTheSession(t *testing.T) {
 		t.Fatalf("URL() = %v", got)
 	}
 	drop(t, w, sid, st)
+	tok = st.latestToken()
 	b := openToken2(t, ts, "t="+url.QueryEscape(tok)+"&r=1&u="+url.QueryEscape("/notes/n3"), nil)
 	readUntilReady(t, b)
 	if got := s.URL(); got.Path != "/notes/n3" {
@@ -284,6 +285,7 @@ func TestClientReportedURLReachesTheSession(t *testing.T) {
 	}
 	for _, bad := range []string{"//evil.example/x", "https://evil.example/", `/\evil`, "javascript:1", strings.Repeat("/a", 2000)} {
 		drop(t, w, sid, b)
+		tok = b.latestToken()
 		b = openToken2(t, ts, "t="+url.QueryEscape(tok)+"&r=1&u="+url.QueryEscape(bad), nil)
 		readUntilReady(t, b)
 		if got := s.URL(); got.Path != "/notes/n3" {

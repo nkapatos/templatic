@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
+	"maps"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/nkapatos/templatic/internal/markup"
 )
 
 type writerFunc func([]byte) (int, error)
@@ -17,10 +20,8 @@ func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
 
 type streamHandler struct{ world *World }
 
-// A session minted from a page token is reattached only by that token, so a guessed sid cannot take it over.
-func authorizeReattach(s *Session, token string) bool {
-	return token != "" && tokensEqual(s.token, token)
-}
+// A session is reattached only by a token it issued, so a guessed sid cannot take it over.
+func authorizeReattach(s *Session, token string) bool { return s.knowsToken(token) }
 
 func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -39,16 +40,16 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reconnect := r.Header.Get("Last-Event-ID") != "" || q.Get("r") != ""
 
 	// A reconnect cannot see HTTP statuses (EventSource would retry forever), so token failures resync instead.
-	reject := func(code int, msg string) {
+	reject := func(code int, msg, reason string) {
 		if reconnect {
-			h.resyncOnly(w, rc)
+			h.resyncOnly(w, rc, reason)
 			return
 		}
 		http.Error(w, msg, code)
 	}
 
 	if token == "" {
-		reject(http.StatusBadRequest, "live: page token required")
+		reject(http.StatusBadRequest, "live: page token required", ReasonLost)
 		return
 	}
 	// An expired token is authentic; it admits only a reattach to the live session it minted.
@@ -57,14 +58,24 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, errTokenExpired) {
 		expired = true
 	} else if err != nil {
-		reject(http.StatusForbidden, err.Error())
+		reject(http.StatusForbidden, err.Error(), ReasonLost)
 		return
 	}
 	if sid != "" && sid != claims.SID {
-		reject(http.StatusBadRequest, "live: sid does not match page token")
+		reject(http.StatusBadRequest, "live: sid does not match page token", ReasonLost)
 		return
 	}
 	sid, params, seeds = claims.SID, claims.Params, claims.Seeds
+	if h.world.admit != nil && !h.world.admit(r, maps.Clone(params)) {
+		h.world.mu.RLock()
+		s, known := h.world.sessions[sid]
+		h.world.mu.RUnlock()
+		if known && authorizeReattach(s, token) {
+			s.end(ReasonRefused)
+		}
+		reject(http.StatusForbidden, "live: connect refused", ReasonRefused)
+		return
+	}
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -86,7 +97,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if expired && !known {
 			h.world.mu.Unlock()
-			reject(http.StatusForbidden, errTokenExpired.Error())
+			reject(http.StatusForbidden, errTokenExpired.Error(), ReasonLost)
 			return
 		}
 		if known && !authorizeReattach(s, token) {
@@ -98,10 +109,10 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if reconnect {
 				// The server no longer holds the session, so the page's DOM cannot be trusted: resync rather than start a blank one.
 				h.world.mu.Unlock()
-				h.resyncOnly(w, rc)
+				h.resyncOnly(w, rc, ReasonLost)
 				return
 			}
-			s = &Session{world: h.world, sid: sid, token: token, params: params}
+			s = &Session{world: h.world, sid: sid, token: token, params: params, created: h.world.clock()}
 			for topic, raw := range seeds {
 				if s.cells == nil {
 					s.cells = map[string]cellView{}
@@ -123,7 +134,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		prelude, stale, resumed, retired = s.attach(c)
 		if retired {
 			if reconnect || attempt > 0 {
-				h.resyncOnly(w, rc)
+				h.resyncOnly(w, rc, ReasonLost)
 				return
 			}
 			continue
@@ -133,8 +144,23 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer s.detach(c) // runs on every exit, including a panicking callback
 	if stale {
 		s.retire()
-		h.resyncOnly(w, rc)
+		h.resyncOnly(w, rc, ReasonLost)
 		return
+	}
+	if maxAge := h.world.maxAge; maxAge > 0 {
+		left := s.created.Add(maxAge).Sub(h.world.clock())
+		if left <= 0 {
+			s.retire()
+			h.resyncOnly(w, rc, ReasonMaxAge)
+			return
+		}
+		t := time.AfterFunc(left, func() { s.end(ReasonMaxAge) })
+		defer t.Stop()
+	}
+	// Each attach hands the page a fresh token, so a token seen in a URL (EventSource cannot send headers) stops
+	// working two attaches later.
+	if next := s.rotateToken(); next != "" {
+		prelude = append([]event{{kind: KindToken, body: tokenBody(next)}}, prelude...)
 	}
 
 	h.world.mu.RLock()
@@ -198,12 +224,12 @@ func canFlush(w http.ResponseWriter) bool {
 	}
 }
 
-func (h *streamHandler) resyncOnly(w http.ResponseWriter, rc *http.ResponseController) {
+func (h *streamHandler) resyncOnly(w http.ResponseWriter, rc *http.ResponseController, reason string) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("id: 1\nevent: tc\ndata: {\"kind\":\"resync\"}\n\n"))
+	_ = markup.WriteStrings(w, "id: 1\nevent: tc\ndata: {\"kind\":\"resync\",\"reason\":\"", reason, "\"}\n\n")
 	_ = rc.Flush()
 }
 

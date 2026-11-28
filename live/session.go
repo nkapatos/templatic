@@ -39,7 +39,10 @@ type Session struct {
 	timerGen  uint64
 	connected bool
 	retired   bool
-	token     string
+	token     string // the newest token, sent to the page at its last attach
+	prevToken string // the one before, in case the page lost the frame that carried token
+	tokenGen  uint64
+	created   time.Time
 	params    map[string]string
 	req       RequestInfo
 	pageURL   url.URL
@@ -56,6 +59,7 @@ type connState struct {
 	inbox    chan event
 	pending  map[string]event // latest cell or swap per topic, slotted once in inbox; guarded by Session.mu
 	overflow atomic.Bool
+	reason   atomic.Pointer[string] // why the connection ends with a resync; the first reason wins
 	cancel   context.CancelFunc
 	done     chan struct{}
 	doneOnce sync.Once
@@ -66,6 +70,49 @@ func newConn(cancel context.CancelFunc) *connState {
 }
 
 func (c *connState) finish() { c.doneOnce.Do(func() { close(c.done) }) }
+
+// end makes the writer send a resync with reason and stop.
+func (c *connState) end(reason string) {
+	c.reason.CompareAndSwap(nil, &reason)
+	c.cancel()
+}
+
+func (c *connState) endReason() string {
+	if r := c.reason.Load(); r != nil {
+		return *r
+	}
+	return ""
+}
+
+// end sends the page a resync with reason, if it is connected, and retires the session.
+func (s *Session) end(reason string) {
+	s.mu.Lock()
+	c := s.conn
+	s.mu.Unlock()
+	if c != nil {
+		c.end(reason)
+	}
+	s.retire()
+}
+
+// A reattach proves itself with the newest token or the one before.
+func (s *Session) knowsToken(token string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return token != "" && (tokensEqual(s.token, token) || (s.prevToken != "" && tokensEqual(s.prevToken, token)))
+}
+
+// rotateToken makes a fresh token the newest and returns it, or "" when signing fails.
+func (s *Session) rotateToken() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tokenGen++
+	next := s.world.reissue(s.sid, s.params, s.tokenGen)
+	if next != "" {
+		s.prevToken, s.token = s.token, next
+	}
+	return next
+}
 
 // attachWait bounds how long attach waits for a replaced writer to exit before it resyncs.
 var attachWait = 2 * time.Second
@@ -129,7 +176,7 @@ func (s *Session) offer(ev event) {
 	case c.inbox <- ev:
 	default:
 		c.overflow.Store(true)
-		c.cancel()
+		c.end(ReasonOverflow)
 	}
 }
 
@@ -404,8 +451,8 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 	for {
 		select {
 		case <-ctx.Done():
-			if c.overflow.Load() {
-				_ = frame(KindResync, "", nil)
+			if r := c.endReason(); r != "" {
+				_ = frame(KindResync, "", resyncBody(r))
 				flush()
 			}
 			return nil
@@ -428,9 +475,9 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 				case <-timer.C:
 					break drain
 				case <-ctx.Done():
-					// Write the resync here: overflow cancels the context, and the next inbox read could lose it.
-					if c.overflow.Load() {
-						_ = frame(KindResync, "", nil)
+					// Write the resync here: ending cancels the context, and the next inbox read could lose it.
+					if r := c.endReason(); r != "" {
+						_ = frame(KindResync, "", resyncBody(r))
 						flush()
 					}
 					timer.Stop()
@@ -439,8 +486,8 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 				}
 			}
 			timer.Stop()
-			if c.overflow.Load() {
-				_ = frame(KindResync, "", nil)
+			if r := c.endReason(); r != "" {
+				_ = frame(KindResync, "", resyncBody(r))
 				flush()
 				return nil
 			}
