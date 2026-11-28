@@ -84,9 +84,8 @@ func TestMaxSessionAgeEndsAConnectedSession(t *testing.T) {
 	if f := untilResync(t, r); !strings.Contains(f, `"reason":"max-age"`) {
 		t.Fatalf("got %q", f)
 	}
-	if sessionOf(w, "s1") != nil {
-		t.Fatal("an aged session is still held")
-	}
+	// the page is told first, then the session retires
+	waitFor(t, "the aged session to retire", func() bool { return sessionOf(w, "s1") == nil })
 }
 
 func TestEachAttachRotatesTheToken(t *testing.T) {
