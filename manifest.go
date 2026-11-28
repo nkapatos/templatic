@@ -1,10 +1,12 @@
 package templatic
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 
 	"github.com/nkapatos/templatic/internal/manifest"
+	"github.com/nkapatos/templatic/internal/pagestate"
 )
 
 // Manifest is the generated asset manifest (dist/tc.json).
@@ -31,16 +33,19 @@ func DevManifest(distDir string) (*ManifestSource, error) { return manifest.For(
 
 var defaultManifest atomic.Pointer[Manifest]
 
-// UseManifest sets the manifest the package-level Asset resolves against.
+// UseManifest sets the manifest Asset resolves against outside a request.
 func UseManifest(m *Manifest) { defaultManifest.Store(m) }
 
-// Asset returns the content-hashed URL of the bundled asset at source path p.
-// It panics on an unknown path in dev or when no manifest was registered with
-// UseManifest; in prod an unknown path logs an error and returns "".
-func Asset(p string) string {
-	m := defaultManifest.Load()
+// Asset returns the content-hashed URL of the bundled asset at source path p, from the request's manifest (App or
+// WithAssets put it in ctx, and it follows dev rebuilds), else the one UseManifest set. It panics on an unknown
+// path in dev or when there is no manifest; in prod an unknown path logs an error and returns "".
+func Asset(ctx context.Context, p string) string {
+	m := pagestate.Manifest(ctx)
 	if m == nil {
-		panic("templatic: Asset(" + fmt.Sprintf("%q", p) + ") called before UseManifest")
+		m = defaultManifest.Load()
+	}
+	if m == nil {
+		panic("templatic: Asset(" + fmt.Sprintf("%q", p) + ") has no manifest: serve the page through App or WithAssets, or call UseManifest")
 	}
 	return m.Asset(p)
 }

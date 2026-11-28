@@ -340,7 +340,10 @@ func buildModules(table *Entries, absRoot, distDir string, outs []Output) map[st
 		if strings.HasSuffix(o.Path, ".css") {
 			m.CSS = []string{distRel(distDir, o.Path)}
 		} else {
-			m.File = distRel(distDir, o.Path)
+			// an entry that only imports CSS bundles to no code: pages would preload and import an empty file
+			if o.Bytes > 0 || len(o.Imports) > 0 {
+				m.File = distRel(distDir, o.Path)
+			}
 			if o.CSS != "" {
 				m.CSS = []string{distRel(distDir, o.CSS)}
 			}

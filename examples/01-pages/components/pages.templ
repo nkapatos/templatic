@@ -12,7 +12,7 @@ templ Home() {
 		</p>
 		<figure>
 			// Asset resolves a bundled file by its source path to its hashed URL.
-			<img src={ templatic.Asset("client/logo.svg") } alt="The logo, served from the bundle"/>
+			<img src={ templatic.Asset(ctx, "client/logo.svg") } alt="The logo, served from the bundle"/>
 			<figcaption>This image's URL carries its content hash.</figcaption>
 		</figure>
 	}

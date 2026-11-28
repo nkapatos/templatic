@@ -145,8 +145,9 @@ func Run(opts Options) (*Summary, error) {
 	}
 
 	var unresolved []unresolvedQuals
+	tags := map[string]Island{}
 	for _, rel := range files {
-		islands, err := renderFile(opts, rel, s, &unresolved)
+		islands, err := renderFile(opts, rel, s, &unresolved, tags)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", rel, err)
 		}

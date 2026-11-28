@@ -2,6 +2,7 @@ package templatic_test
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -48,12 +49,12 @@ func TestAssetResolvesHashedURLServedImmutable(t *testing.T) {
 	templatic.UseManifest(m)
 	t.Cleanup(func() { templatic.UseManifest(nil) })
 
-	url := templatic.Asset("client/assets/logo.svg")
+	url := templatic.Asset(context.Background(), "client/assets/logo.svg")
 	if !regexp.MustCompile(`^/_templatic/assets/logo-[A-Z0-9]{8}\.svg$`).MatchString(url) {
 		t.Fatalf("Asset = %q, want a hashed URL under the mount base", url)
 	}
 	for _, spelling := range []string{"./client/assets/logo.svg", "/client/assets/logo.svg", "client/assets/../assets/logo.svg"} {
-		if got := templatic.Asset(spelling); got != url {
+		if got := templatic.Asset(context.Background(), spelling); got != url {
 			t.Fatalf("Asset(%q) = %q, want %q", spelling, got, url)
 		}
 	}
@@ -108,7 +109,7 @@ func TestAssetUnknownPathDevPanicsProdLogs(t *testing.T) {
 				t.Fatal("Asset before UseManifest must panic")
 			}
 		}()
-		templatic.Asset("client/a.svg")
+		templatic.Asset(context.Background(), "client/a.svg")
 	})
 }
 
@@ -140,5 +141,22 @@ func TestAssetsHandlerOnlyHashedBundledAssetsImmutable(t *testing.T) {
 		if got != want {
 			t.Errorf("%s: immutable=%v, want %v", rel, got, want)
 		}
+	}
+}
+
+func TestAssetReadsTheRequestsManifest(t *testing.T) {
+	dist := buildAssetApp(t, generate.ModeProd)
+	src, err := templatic.ManifestFor("prod", dist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	templatic.UseManifest(nil) // only the request's manifest can answer
+	var got string
+	h := templatic.WithAssets(src)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		got = templatic.Asset(r.Context(), "client/assets/logo.svg")
+	}))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+	if !regexp.MustCompile(`^/_templatic/assets/logo-[A-Z0-9]{8}\.svg$`).MatchString(got) {
+		t.Fatalf("Asset = %q, want the hashed URL from the request's manifest", got)
 	}
 }

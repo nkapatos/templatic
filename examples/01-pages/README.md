@@ -17,8 +17,9 @@ go run .                     # http://localhost:8080
   `templatic generate` writes it as `app-<hash>.css`, and
   `templatic.Head` links it from the manifest (`.templatic/dist/tc.json`).
 - **Images referenced by the CSS are bundled too.** `url(./logo.svg)` becomes
-  `assets/logo-<hash>.svg`. From markup, `templatic.Asset("client/logo.svg")`
-  returns the same hashed URL (after `templatic.UseManifest`).
+  `assets/logo-<hash>.svg`. From markup, `templatic.Asset(ctx, "client/logo.svg")`
+  returns the same hashed URL, from the manifest `templatic.App` puts in
+  the request, so it follows rebuilds under `templatic dev`.
 - **Hashed files are cached for a year.** `templatic.Assets` serves the dist
   directory with `Cache-Control: immutable` on hashed names; a changed file
   gets a new name, so a deploy never serves a stale one.

@@ -1017,3 +1017,19 @@ func TestStubsWithoutIslandsDir(t *testing.T) {
 		}
 	}
 }
+
+func TestADuplicateIslandTagFailsNamingBothFiles(t *testing.T) {
+	opts := testAppOpts(t)
+	card := filepath.Join(opts.Root, "widgets", "card.templ")
+	src := strings.Replace(read(t, card), "templ UserCard(", "templ UserCard2(", 1)
+	if err := os.WriteFile(filepath.Join(opts.Root, "widgets", "card2.templ"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Run(opts)
+	if err == nil || !strings.Contains(err.Error(), `island tag "user-card" is declared twice: widgets/card.templ (UserCard) and widgets/card2.templ (UserCard2)`) {
+		t.Fatalf("got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(opts.Root, "widgets", "card2_templ.go")); err == nil {
+		t.Fatal("the second file must not have been written")
+	}
+}
