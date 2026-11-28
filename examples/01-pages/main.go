@@ -25,9 +25,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("pages: %v (run `go tool templatic generate` first)", err)
 	}
-	// templatic.Asset resolves against this manifest.
-	templatic.UseManifest(manifests.Current())
-
 	mux := http.NewServeMux()
 	mux.Handle("GET /{$}", templ.Handler(components.Home()))
 	mux.Handle("GET /about", templ.Handler(components.About()))

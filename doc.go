@@ -84,7 +84,8 @@
 // [Assets] serves the generated directory with its cache policy: content
 // hashed files are immutable, fixed names such as boot.js revalidate, and
 // directories are not listed. [Asset] returns the hashed URL of a bundled
-// file by source path, after [UseManifest] registered a manifest.
+// file by source path, from the request's manifest ([UseManifest] sets one
+// for code outside a request).
 // [AssetFingerprint] returns the content hash of a file, for a ?v= query on
 // files that [Assets] serves.
 package templatic
