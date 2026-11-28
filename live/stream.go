@@ -28,8 +28,9 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var params map[string]string
 	var seeds map[string]jsontext.Value
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
+	// The controller follows Unwrap, so app middleware that wraps the writer without Flush still streams.
+	rc := http.NewResponseController(w)
+	if !canFlush(w) {
 		http.Error(w, "live: streaming unsupported", http.StatusInternalServerError)
 		return
 	}
@@ -40,7 +41,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// A reconnect cannot see HTTP statuses (EventSource would retry forever), so token failures resync instead.
 	reject := func(code int, msg string) {
 		if reconnect {
-			h.resyncOnly(w, flusher)
+			h.resyncOnly(w, rc)
 			return
 		}
 		http.Error(w, msg, code)
@@ -97,7 +98,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if reconnect {
 				// The server no longer holds the session, so the page's DOM cannot be trusted: resync rather than start a blank one.
 				h.world.mu.Unlock()
-				h.resyncOnly(w, flusher)
+				h.resyncOnly(w, rc)
 				return
 			}
 			s = &Session{world: h.world, sid: sid, token: token, params: params}
@@ -122,7 +123,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		prelude, stale, resumed, retired = s.attach(c)
 		if retired {
 			if reconnect || attempt > 0 {
-				h.resyncOnly(w, flusher)
+				h.resyncOnly(w, rc)
 				return
 			}
 			continue
@@ -132,7 +133,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer s.detach(c) // runs on every exit, including a panicking callback
 	if stale {
 		s.retire()
-		h.resyncOnly(w, flusher)
+		h.resyncOnly(w, rc)
 		return
 	}
 
@@ -161,7 +162,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
+	_ = rc.Flush()
 
 	// Frame writes carry a deadline so a vanished client cannot leave writes buffering forever; test doubles skip it.
 	deadline := h.world.writeDeadline()
@@ -169,7 +170,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if deadline <= 0 {
 			return
 		}
-		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(deadline))
+		_ = rc.SetWriteDeadline(time.Now().Add(deadline))
 	}
 	writeWithDeadline := func(p []byte) (int, error) {
 		setDeadline()
@@ -179,17 +180,31 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// The loop flushes once per batch of frames, never holding a frame past its batch.
 	_ = s.loop(ctx, c, prelude, writerFunc(writeWithDeadline), func() {
 		setDeadline()
-		flusher.Flush()
+		_ = rc.Flush()
 	})
 }
 
-func (h *streamHandler) resyncOnly(w http.ResponseWriter, flusher http.Flusher) {
+// canFlush reports whether w, or a writer it unwraps to, implements http.Flusher.
+func canFlush(w http.ResponseWriter) bool {
+	for {
+		if _, ok := w.(http.Flusher); ok {
+			return true
+		}
+		u, ok := w.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			return false
+		}
+		w = u.Unwrap()
+	}
+}
+
+func (h *streamHandler) resyncOnly(w http.ResponseWriter, rc *http.ResponseController) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("id: 1\nevent: tc\ndata: {\"kind\":\"resync\"}\n\n"))
-	flusher.Flush()
+	_ = rc.Flush()
 }
 
 // parseHeld reads "topic:ver,topic:ver"; a malformed pair is skipped, and a missing version reads as -1 (none).

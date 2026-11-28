@@ -13,7 +13,7 @@
 //     ([App], [WithAssets], [WithPageTokens]) and the layout components
 //     [Head] and [Boot].
 //   - [github.com/nkapatos/templatic/live] holds the server-side state: a
-//     [live.World] with cells, regions, streams and commands, pushed to
+//     [live.World] with cells, regions, collections and commands, pushed to
 //     browsers over Server-Sent Events.
 //   - [github.com/nkapatos/templatic/ui] holds the templ components that
 //     bind markup to that state (ui.Cell, ui.Region, ui.Button and others).

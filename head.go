@@ -79,6 +79,9 @@ func writeLinks(ctx context.Context, sb *strings.Builder, m *Manifest, base, rel
 			sb.WriteString(` as="style"`)
 		}
 		sb.WriteString(` href="` + markup.EscapeAttr(base+"/"+file) + `"`)
+		if rel == "modulepreload" {
+			sb.WriteString(nonceAttr(ctx))
+		}
 		if sum := m.Integrity[file]; sum != "" {
 			sb.WriteString(` integrity="` + markup.EscapeAttr(sum) + `"`)
 		}
@@ -91,4 +94,13 @@ func writeLinks(ctx context.Context, sb *strings.Builder, m *Manifest, base, rel
 func writeIslandLinks(ctx context.Context, sb *strings.Builder, m *Manifest, base string, mod ManifestModule) {
 	writeLinks(ctx, sb, m, base, "modulepreload", append([]string{mod.File}, mod.Imports...)...)
 	writeLinks(ctx, sb, m, base, "preload", mod.CSS...)
+}
+
+// nonceAttr is ` nonce="…"` for the CSP nonce templ.WithNonce set, or "" without one.
+func nonceAttr(ctx context.Context) string {
+	n := templ.GetNonce(ctx)
+	if n == "" {
+		return ""
+	}
+	return ` nonce="` + markup.EscapeAttr(n) + `"`
 }
