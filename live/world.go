@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/a-h/templ"
@@ -34,6 +35,7 @@ type World struct {
 	writeTimeout time.Duration
 	coalesce     time.Duration
 	submits      submitStore
+	swapGen      atomic.Uint64 // stamps swaps in the order their state was read
 }
 
 // Option configures a World at construction.
@@ -136,6 +138,7 @@ func (w *World) Redraw(topic string) error {
 	if !ok {
 		return &UnknownRegionError{Region: topic}
 	}
+	gen := w.swapGen.Add(1)
 	html, err := r.redraw()
 	if err != nil {
 		return err
@@ -146,7 +149,7 @@ func (w *World) Redraw(topic string) error {
 	if err != nil {
 		return err
 	}
-	w.publish(event{kind: KindSwap, topic: topic, body: body})
+	w.publish(event{kind: KindSwap, topic: topic, body: body, version: gen})
 	return nil
 }
 
@@ -219,8 +222,8 @@ func (w *World) snapshot() []event {
 	defer w.mu.RUnlock()
 	out := make([]event, 0, len(w.cells))
 	for name, c := range w.cells {
-		if body := c.snapshot(); body != nil {
-			out = append(out, event{kind: KindCell, topic: name, body: body})
+		if body, version := c.snapshot(); body != nil {
+			out = append(out, event{kind: KindCell, topic: name, body: body, version: version})
 		}
 	}
 	return out

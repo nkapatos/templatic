@@ -72,17 +72,17 @@ func (c *Cell[T]) publishValue(v T, version uint64) {
 	c.world.publish(ev)
 }
 
-func (c *Cell[T]) snapshot() (body jsontext.Value) {
+func (c *Cell[T]) snapshot() (body jsontext.Value, version uint64) {
 	c.mu.Lock()
-	v := c.value
+	v, version := c.value, c.version
 	c.mu.Unlock()
 	b, err := json.Marshal(struct {
 		V T `json:"v"`
 	}{V: v})
 	if err != nil {
-		return nil
+		return nil, 0
 	}
-	return b
+	return b, version
 }
 
 // SessionCell declares, or returns, the typed cell topic on session s.
@@ -117,8 +117,8 @@ func (s *Session) snapshot() []event {
 	defer s.cellMu.Unlock()
 	out := make([]event, 0, len(s.cells))
 	for name, c := range s.cells {
-		if body := c.snapshot(); body != nil {
-			out = append(out, event{kind: KindCell, topic: name, body: body})
+		if body, version := c.snapshot(); body != nil {
+			out = append(out, event{kind: KindCell, topic: name, body: body, version: version})
 		}
 	}
 	return out
@@ -126,13 +126,13 @@ func (s *Session) snapshot() []event {
 
 type seedCell struct{ raw jsontext.Value }
 
-func (c *seedCell) snapshot() jsontext.Value {
+func (c *seedCell) snapshot() (jsontext.Value, uint64) {
 	b := make([]byte, 0, len(c.raw)+6)
 	b = append(b, `{"v":`...)
 	b = append(b, c.raw...)
-	return append(b, '}')
+	return append(b, '}'), 0
 }
 
 type cellView interface {
-	snapshot() jsontext.Value
+	snapshot() (body jsontext.Value, version uint64)
 }

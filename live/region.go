@@ -50,6 +50,11 @@ func (r *Region) redraw() (string, error) {
 
 // Swap renders comp and pushes it to one session as topic's markup.
 func (w *World) Swap(s *Session, topic string, comp templ.Component) error {
+	return w.swap(s, topic, comp, w.swapGen.Add(1))
+}
+
+// gen orders swaps of one topic: a swap older than the one a page last received is dropped.
+func (w *World) swap(s *Session, topic string, comp templ.Component, gen uint64) error {
 	validateTopic(topic)
 	if s == nil {
 		return fmt.Errorf("live: swap on %q has no session", topic)
@@ -67,7 +72,7 @@ func (w *World) Swap(s *Session, topic string, comp templ.Component) error {
 	if err != nil {
 		return err
 	}
-	s.offer(event{kind: KindSwap, topic: topic, body: body})
+	s.offer(event{kind: KindSwap, topic: topic, body: body, version: gen})
 	return nil
 }
 

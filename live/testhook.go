@@ -113,7 +113,7 @@ func init() {
 		if !ok {
 			return nil, false
 		}
-		body := c.snapshot()
+		body, _ := c.snapshot()
 		return body, body != nil
 	}
 }
