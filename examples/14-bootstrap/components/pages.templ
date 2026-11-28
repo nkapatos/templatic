@@ -79,20 +79,20 @@ templ NotFound() {
 }
 
 templ reportFields(services []Service, selected string) {
-	@ui.FormError()
+	@ui.FormError(ui.Class("invalid-feedback"))
 	<div class="mb-3">
 		<label class="form-label" for="report-service">Service</label>
-		<select class="form-select" id="report-service" name="service">
+		<select class="form-select" id="report-service" name="service" { ui.FieldAttrs(ctx, "service")... }>
 			<option value="">choose…</option>
 			for _, s := range services {
 				<option value={ s.ID } selected?={ ui.FieldValue(ctx, "service", selected) == s.ID }>{ s.Name }</option>
 			}
 		</select>
-		@ui.FieldError("service")
+		@ui.FieldError("service", ui.Class("invalid-feedback"))
 	</div>
 	<div class="mb-3">
 		<label class="form-label" for="report-note">What happened</label>
-		<input class="form-control" id="report-note" name="note" value={ ui.FieldValue(ctx, "note", "") }/>
-		@ui.FieldError("note")
+		<input class="form-control" id="report-note" name="note" value={ ui.FieldValue(ctx, "note", "") } { ui.FieldAttrs(ctx, "note")... }/>
+		@ui.FieldError("note", ui.Class("invalid-feedback"))
 	</div>
 }

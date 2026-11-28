@@ -29,10 +29,9 @@ templ Home(count *live.Cell[int], level *live.Region, failed ui.Option) {
 					type="number"
 					value={ ui.FieldValue(ctx, "n", "1") }
 					class="mt-1 w-28 rounded-md border border-slate-300 px-3 py-2 aria-invalid:outline-2 aria-invalid:outline-red-600"
+					{ ui.FieldAttrs(ctx, "n")... }
 				/>
-				<span class="mt-1 text-red-700">
-					@ui.FieldError("n")
-				</span>
+				@ui.FieldError("n", ui.Class("mt-1 text-red-700"))
 			</label>
 			<button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500">Add</button>
 		}

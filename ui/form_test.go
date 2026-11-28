@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -58,7 +61,7 @@ func TestFormFirstRenderHasEmptySlotsAndDefaults(t *testing.T) {
 	got := renderForm(t)
 	for _, want := range []string{
 		`value="1"`,
-		`<span data-tc-field-error="n" aria-live="polite"></span>`,
+		` data-tc-field-error="n" aria-live="polite"></span>`,
 		`<span data-tc-form-error aria-live="polite"></span>`,
 	} {
 		if !strings.Contains(got, want) {
@@ -77,14 +80,16 @@ func TestFailedRerendersValuesAndErrors(t *testing.T) {
 	got := renderForm(t, ui.Failed(r, err))
 	for _, want := range []string{
 		`value="&lt;500&gt;"`,
-		`<span data-tc-field-error="n" aria-live="polite">must be a whole number</span>`,
+		` data-tc-field-error="n" aria-live="polite">must be a whole number</span>`,
 		`<span data-tc-form-error aria-live="polite">nothing to add</span>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %s in %s", want, got)
 		}
 	}
-	if renderForm(t, ui.Failed(r, nil)) != renderForm(t) {
+	// each render numbers its slots afresh; the rest must match
+	formNo := regexp.MustCompile(`tc-f\d+-`)
+	if formNo.ReplaceAllString(renderForm(t, ui.Failed(r, nil)), "") != formNo.ReplaceAllString(renderForm(t), "") {
 		t.Fatal("Failed with a nil error must change nothing")
 	}
 }
@@ -126,5 +131,59 @@ func TestFieldValuesKeepsTheSubmittedSelection(t *testing.T) {
 		if v := render(ui.Failed(r, err)); strings.Join(v, ",") != want {
 			t.Fatalf("%s: got %v, want %q", body, v, want)
 		}
+	}
+}
+
+func TestFieldAttrsMarkARefusedFieldLikeTheRuntime(t *testing.T) {
+	r := httptest.NewRequest("POST", "/add", strings.NewReader(url.Values{"n": {"500"}, "title": {"x"}}.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	_, err := add.Decode(r)
+	input := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		attrs := ui.FieldAttrs(ctx, "n")
+		if _, err := io.WriteString(w, `<input name="n"`); err != nil {
+			return err
+		}
+		for _, k := range slices.Sorted(maps.Keys(attrs)) {
+			if _, err := io.WriteString(w, " "+k+`="`+templ.EscapeString(attrs[k].(string))+`"`); err != nil {
+				return err
+			}
+		}
+		if _, err := io.WriteString(w, `>`); err != nil {
+			return err
+		}
+		return ui.FieldError("n", ui.Class("invalid-feedback")).Render(ctx, w)
+	})
+	render := func(opts ...ui.Option) string {
+		var buf bytes.Buffer
+		if err := ui.FormFor(add, "/add", opts...).Render(templ.WithChildren(context.Background(), input), &buf); err != nil {
+			t.Fatal(err)
+		}
+		return buf.String()
+	}
+
+	got := render(ui.Failed(r, err))
+	m := regexp.MustCompile(`aria-describedby="([^"]+)"`).FindStringSubmatch(got)
+	if !strings.Contains(got, `aria-invalid="true"`) || m == nil || !strings.Contains(got, `<span id="`+m[1]+`" data-tc-field-error="n"`) {
+		t.Fatalf("the input must be marked and point at its slot: %s", got)
+	}
+	if !strings.Contains(got, `class="invalid-feedback">at most 100</span>`) {
+		t.Fatalf("the slot takes its options: %s", got)
+	}
+	if plain := render(); strings.Contains(plain, "aria-invalid") || strings.Contains(plain, "aria-describedby") {
+		t.Fatalf("an unrefused field is not marked: %s", plain)
+	}
+	slot := regexp.MustCompile(`<span id="[^"]+"`)
+	if a, b := render(ui.Failed(r, err)), render(ui.Failed(r, err)); slot.FindString(a) == slot.FindString(b) {
+		t.Fatal("two forms on a page must not share a slot id")
+	}
+}
+
+func TestFormErrorTakesOptions(t *testing.T) {
+	var buf bytes.Buffer
+	if err := ui.FormError(ui.Class("alert"), ui.Attrs(templ.Attributes{"role": "alert"})).Render(context.Background(), &buf); err != nil {
+		t.Fatal(err)
+	}
+	if got := buf.String(); got != `<span data-tc-form-error aria-live="polite" class="alert" role="alert"></span>` {
+		t.Fatalf("got %s", got)
 	}
 }

@@ -16,17 +16,17 @@ templ SignupForm(props SignupProps, failed ui.Option) {
 		@ui.FormError()
 		<label>
 			Username
-			<input name="username" value={ ui.FieldValue(ctx, "username", "") } autocomplete="username"/>
+			<input name="username" value={ ui.FieldValue(ctx, "username", "") } autocomplete="username" { ui.FieldAttrs(ctx, "username")... }/>
 			@ui.FieldError("username")
 		</label>
 		<label>
 			Email
-			<input name="email" type="email" value={ ui.FieldValue(ctx, "email", "") } autocomplete="email"/>
+			<input name="email" type="email" value={ ui.FieldValue(ctx, "email", "") } autocomplete="email" { ui.FieldAttrs(ctx, "email")... }/>
 			@ui.FieldError("email")
 		</label>
 		<label>
 			Plan
-			<select name="plan">
+			<select name="plan" { ui.FieldAttrs(ctx, "plan")... }>
 				<option value="">choose…</option>
 				for _, p := range props.Plans {
 					<option value={ p } selected?={ ui.FieldValue(ctx, "plan", "") == p }>{ p }</option>

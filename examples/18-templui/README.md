@@ -133,16 +133,14 @@ again afterwards. Put overlays that must stay open outside live regions.
 `input.Input` and a submit `button.Button`; `ui.FieldValue` fills the
 input's `Value`.
 
-- **Field errors.** `ui.FieldError("title")` sits in a span with
-  `text-destructive`; `ui.FieldError` takes no class
-  ([#54](https://github.com/nkapatos/templatic/issues/54)). templUI's
+- **Field errors.** `ui.FieldError("title", ui.Class("text-sm
+  text-destructive"))` takes templUI's colors. templUI's
   `field.Error` is not used: it always renders a `role="alert"` element,
   so the form would carry an empty alert.
 - **`aria-invalid` needs no mapping.** templUI's input is styled through
   `aria-invalid:` variants, the attribute the runtime sets on a refused
-  field. Without JavaScript the re-rendered field is not marked
-  ([#59](https://github.com/nkapatos/templatic/issues/59)), so it shows the
-  message without the red border.
+  field. Without JavaScript `ui.FieldAttrs(ctx, "title")`, passed as the
+  input's `Attributes`, marks the re-rendered field the same way.
 - **Each task's Done/Reopen button** is a submit button of its own
   `ui.FormFor(Toggle, "/toggle")` with `name="id"`.
 

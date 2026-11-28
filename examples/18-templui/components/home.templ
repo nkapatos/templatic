@@ -43,10 +43,8 @@ templ Home(tasks *live.Region, failed ui.Option) {
 						@field.Label(field.LabelProps{For: "title", Class: "sr-only"}) {
 							Title
 						}
-						@input.Input(input.Props{ID: "title", Name: "title", Placeholder: "Write the README", Value: ui.FieldValue(ctx, "title", "")})
-						<span class="text-sm text-destructive">
-							@ui.FieldError("title")
-						</span>
+						@input.Input(input.Props{ID: "title", Name: "title", Placeholder: "Write the README", Value: ui.FieldValue(ctx, "title", ""), Attributes: ui.FieldAttrs(ctx, "title")})
+						@ui.FieldError("title", ui.Class("text-sm text-destructive"))
 					}
 					@button.Button(button.Props{Type: button.TypeSubmit}) {
 						Add
