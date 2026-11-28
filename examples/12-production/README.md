@@ -49,10 +49,7 @@ not: [#52](https://github.com/nkapatos/templatic/issues/52)). To ship, run `go t
     fills, so frames and heartbeats would wait in the compressor;
   - implements `Flush`, which decides at once so a streamed response is
     never held back, and `Unwrap`, so `http.ResponseController` reaches
-    the connection for the stream's write deadlines. `Flush` is required
-    today: the stream asserts `http.Flusher` and answers 500 behind a
-    writer that only implements `Unwrap`
-    ([#45](https://github.com/nkapatos/templatic/issues/45)).
+    the connection for the stream's flushes and write deadlines.
 
   Compress in one place: here or in the proxy, not both.
 - **HTML is `Cache-Control: no-cache`.** `page` in `main.go` sets it on
@@ -63,8 +60,8 @@ not: [#52](https://github.com/nkapatos/templatic/issues/52)). To ship, run `go t
   `no-store`.
 - **`TC_KEY` signs page tokens.** Set the same 32+ random bytes on every
   replica and across deploys (`openssl rand -base64 32`), so a token
-  minted by one process verifies on another. Nothing checks the length
-  yet ([#46](https://github.com/nkapatos/templatic/issues/46)). Without
+  minted by one process verifies on another. `live.WithKey` panics on
+  a key shorter than 32 bytes. Without
   it the process logs that it uses a development key.
 - **HTTP/2, so tabs do not run out of connections.** Over HTTP/1.1 every
   open tab's event stream holds one of the ~6 connections a browser

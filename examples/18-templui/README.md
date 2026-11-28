@@ -158,11 +158,10 @@ tasks cannot be seen. templUI offers no fallback for either.
 
 ## Content Security Policy
 
-`@Scripts()` adds the nonce from `templ.WithNonce` to its tag.
-templatic's `Head` and `Boot` add no nonce. Under `script-src 'self'`
-both load. Under a nonce policy (`script-src 'nonce-…' 'strict-dynamic'`)
-the browser blocks the runtime, so the page falls back to plain form
-posts ([#62](https://github.com/nkapatos/templatic/issues/62)).
+`@Scripts()`, `Head` and `Boot` all add the nonce from
+`templ.WithNonce` to their script tags and module preloads, so the page
+runs under `script-src 'self'` and under a nonce policy
+(`script-src 'nonce-…' 'strict-dynamic'`) alike.
 
 ## Files
 
