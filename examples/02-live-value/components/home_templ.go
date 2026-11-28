@@ -77,7 +77,7 @@ func Home(level *live.Cell[int]) templ.Component {
 				}
 				templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "></meter><p class=\"actions\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "></meter> <div class=\"actions\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -99,7 +99,7 @@ func Home(level *live.Cell[int]) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = ui.Button(Fill, FillIn{Amount: 10}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.Button(Fill, FillIn{Amount: 10}, ui.PostTo("/fill")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -121,7 +121,7 @@ func Home(level *live.Cell[int]) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = ui.Button(Fill, FillIn{Amount: 50}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.Button(Fill, FillIn{Amount: 50}, ui.PostTo("/fill")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -143,11 +143,11 @@ func Home(level *live.Cell[int]) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = ui.Button(Empty, struct{}{}, ui.Class("secondary")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.Button(Empty, struct{}{}, ui.PostTo("/empty"), ui.Class("secondary")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p><noscript>Without JavaScript this page shows the level at load time, and the buttons do nothing.</noscript>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><noscript>Without JavaScript this page shows the level at load time; a press reloads it with the new level.</noscript>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

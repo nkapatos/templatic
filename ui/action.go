@@ -5,9 +5,12 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 
 	"github.com/a-h/templ"
 
+	"github.com/nkapatos/templatic/internal/form"
 	"github.com/nkapatos/templatic/internal/markup"
 	"github.com/nkapatos/templatic/live"
 )
@@ -110,9 +113,54 @@ func ActionLink(name string, args any, href string, opts ...LinkOption) templ.Co
 	})
 }
 
-// Button renders a trigger button that raises cmd with in.
+// PostTo makes a Button a one-button form that POSTs its input to action, where cmd.Form serves it with and
+// without JavaScript.
+func PostTo(action string) Option {
+	return func(c *elemConfig) { c.postTo = action }
+}
+
+// Button renders a trigger button that raises cmd with in; with PostTo it is a one-button form that also works
+// without JavaScript. It panics when PostTo is given and In has a field no form can fill.
 func Button[In any](cmd *live.Command[In], in In, opts ...Option) templ.Component {
-	return Action(cmd.Name(), in, opts...)
+	cfg := buildConfig(opts)
+	if cfg.postTo == "" {
+		return Action(cmd.Name(), in, opts...)
+	}
+	fields, err := form.Encode(in)
+	if err != nil {
+		panic("templatic: ui.Button(" + cmd.Name() + ") with PostTo: " + err.Error())
+	}
+	names := slices.Sorted(maps.Keys(fields))
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		label := templ.GetChildren(ctx) // the caller's content, before the form replaces the children
+		button := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+			for _, name := range names {
+				for _, v := range fields[name] {
+					if err := markup.WriteStrings(w, `<input type="hidden" name="`, markup.EscapeAttr(name), `" value="`, markup.EscapeAttr(v), `">`); err != nil {
+						return err
+					}
+				}
+			}
+			// the options style the button; the form is bare
+			if _, err := io.WriteString(w, `<button type="submit"`); err != nil {
+				return err
+			}
+			if err := cfg.writeExtras(w); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(w, `>`); err != nil {
+				return err
+			}
+			if label != nil {
+				if err := label.Render(templ.ClearChildren(ctx), w); err != nil {
+					return err
+				}
+			}
+			_, err := io.WriteString(w, `</button>`)
+			return err
+		})
+		return Form(cmd.Name(), cfg.postTo).Render(templ.WithChildren(ctx, button), w)
+	})
 }
 
 // Link renders an anchor that raises cmd with in and follows href without
