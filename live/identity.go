@@ -79,7 +79,7 @@ type tokenClaims struct {
 	Issued int64                     `json:"i"`
 	Params map[string]string         `json:"p,omitempty"`
 	Seeds  map[string]jsontext.Value `json:"c,omitempty"`
-	Gen    uint64                    `json:"g,omitempty"` // reissue count, so two reissues in one second differ
+	Gen    uint64                    `json:"g,omitzero"` // reissue count, so two reissues in one second differ
 }
 
 // PageToken mints a session identity and returns the signed token that proves it.
