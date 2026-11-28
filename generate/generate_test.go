@@ -283,7 +283,7 @@ func TestRegionMorphRemountsIslandHostsAtomically(t *testing.T) {
 		t.Fatal("runtime live.ts must pin island hosts out before morphing so hosts remount as units")
 	}
 	// The pin must run before the morph call, or the soft-matched host is mangled.
-	pinIdx := strings.Index(live, `host.replaceWith(document.createComment("tc-island"))`)
+	pinIdx := strings.Index(live, `host.replaceWith(mark)`)
 	morphIdx := strings.Index(live, `Idiomorph.morph(region, html`)
 	if pinIdx == -1 || morphIdx == -1 || pinIdx > morphIdx {
 		t.Fatal("runtime live.ts must pin island hosts out before the morph call")
