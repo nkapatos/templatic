@@ -18,6 +18,7 @@ type Option func(*elemConfig)
 
 type elemConfig struct {
 	swaps     string
+	postTo    string
 	multipart bool
 	class     string
 	attrs     templ.Attributes

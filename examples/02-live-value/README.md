@@ -27,23 +27,25 @@ Open it in two windows and press a button in one.
 - **The server changes it on its own.** `drain` in `tank.go` is a plain
   goroutine with a ticker calling `level.Update`; nothing about it is
   request-scoped.
-- **A button changes it too.** `ui.Button(Fill, FillIn{Amount: 10})` sends
-  the `tank.fill` command with a fixed input; `Fill.Handle` in `tank.go`
-  runs it. `Empty` takes `struct{}`. No form and no field: the input is
-  fixed in the markup. Input still goes through `FillIn.Validate`.
+- **A button changes it too.** `ui.Button(Fill, FillIn{Amount: 10}, …)`
+  sends the `tank.fill` command with a fixed input. `Empty` takes
+  `struct{}`. No field to fill: the input is fixed in the markup. Input
+  still goes through `FillIn.Validate`.
 - **Values are latest-wins.** A burst of changes to one value sends the
   last one ([design.md](../../design.md#the-live-channel), "The live
   channel"): changes that land in the same flush window
   (`live.WithCoalesceWindow`, 8ms by default) reach the page as one
   event. A cell is published whole on every change, so each event
   carries the full value.
-- **Without JavaScript** the page renders the current level, in the text
-  and in the meter, and stays there. `ui.Button` renders a
-  `type="button"` with no form, so it does nothing without JavaScript. A
-  command that must work without JavaScript is a form (`ui.FormFor` with
-  `Command.Form`), shown in 03.
+- **The buttons work without JavaScript.** `ui.PostTo("/fill")` makes
+  each `ui.Button` a one-button form that posts its fixed input, and
+  `Fill.Form` and `Empty.Form` in `tank.go` serve the POST either way:
+  with JavaScript the page stays and the level updates live; without, the
+  browser is sent back to the page, which renders the new level. Forms
+  with fields are 03's topic.
 - **The command handlers are tested without a browser.** `tank_test.go`
-  runs them through `livetest` and reads the pushed value.
+  posts to them as the runtime does (`livetest.Session.PostForm`) and
+  reads the pushed value.
 
 ## Files
 

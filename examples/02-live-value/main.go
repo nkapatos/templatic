@@ -31,7 +31,8 @@ func main() {
 		opts = append(opts, live.WithKey([]byte(key)))
 	}
 	w := live.NewWorld(opts...)
-	level := newTank(w)
+	mux := http.NewServeMux()
+	level := newTank(w, mux)
 	go drain(level, time.Second)
 
 	manifests, err := templatic.ManifestFor(os.Getenv("TC_MODE"), distDir)
@@ -40,7 +41,6 @@ func main() {
 	}
 	manifests.Notify(w)
 
-	mux := http.NewServeMux()
 	// One component value serves every request: ui.Cell reads the
 	// current level at render time.
 	mux.Handle("GET /{$}", templ.Handler(components.Home(level)))

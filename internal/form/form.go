@@ -265,6 +265,78 @@ func setScalar(v reflect.Value, raw string) string {
 	return ""
 }
 
+// Encode returns the form fields that Decode reads back into a value equal to v, a struct or a pointer to one.
+func Encode(v any) (url.Values, error) {
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return url.Values{}, nil
+		}
+		rv = rv.Elem()
+	}
+	p := planFor(rv.Type())
+	if p.err != nil {
+		return nil, p.err
+	}
+	// an addressable copy, so a field whose MarshalText has a pointer receiver can call it
+	c := reflect.New(rv.Type()).Elem()
+	c.Set(rv)
+	rv = c
+	out := url.Values{}
+	for _, f := range p.fields {
+		fv, err := rv.FieldByIndexErr(f.index)
+		if err != nil {
+			continue // behind a nil embedded pointer: left empty, as Decode leaves it
+		}
+		switch f.kind {
+		case scalar:
+			s, err := scalarText(fv)
+			if err != nil {
+				return nil, fmt.Errorf("field %s: %w", f.name, err)
+			}
+			out.Set(f.name, s)
+		case optional:
+			if !fv.IsNil() {
+				s, err := scalarText(fv.Elem())
+				if err != nil {
+					return nil, fmt.Errorf("field %s: %w", f.name, err)
+				}
+				out.Set(f.name, s)
+			}
+		case list:
+			for i := range fv.Len() {
+				s, err := scalarText(fv.Index(i))
+				if err != nil {
+					return nil, fmt.Errorf("field %s: %w", f.name, err)
+				}
+				out.Add(f.name, s)
+			}
+		}
+	}
+	return out, nil
+}
+
+// scalarText is the text setScalar reads back into v; v is addressable.
+func scalarText(v reflect.Value) (string, error) {
+	if m, ok := v.Addr().Interface().(encoding.TextMarshaler); ok {
+		b, err := m.MarshalText()
+		return string(b), err
+	}
+	switch v.Kind() {
+	case reflect.String:
+		return v.String(), nil
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool()), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return strconv.FormatInt(v.Int(), 10), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return strconv.FormatUint(v.Uint(), 10), nil
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(v.Float(), 'g', -1, v.Type().Bits()), nil
+	}
+	return "", fmt.Errorf("%s has no form text", v.Type())
+}
+
 func numberMessage(err error, syntax string) string {
 	if ne, ok := err.(*strconv.NumError); ok && ne.Err == strconv.ErrRange {
 		return "is out of range"
