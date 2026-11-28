@@ -42,9 +42,6 @@ func newFeed(w *live.World) *feed {
 			Renders(components.EventView).Elements("ul", "li").Limit(keepEvents).
 			ItemAttrs(func(e components.Event) templ.Attributes { return templ.Attributes{"class": e.Kind} }),
 	}
-	components.Post.Handle(w, func(_ *live.Session, in components.PostIn) (any, error) { return nil, f.post(in) })
-	components.Like.Handle(w, func(_ *live.Session, in components.MessageIn) (any, error) { return nil, f.like(in) })
-	components.Delete.Handle(w, func(_ *live.Session, in components.MessageIn) (any, error) { return nil, f.remove(in) })
 	w.OnConnect(func(*live.Session) { f.log("join", fmt.Sprintf("a page connected (%d open)", f.open.Add(1))) })
 	w.OnResume(func(*live.Session) { f.log("resume", "a page reconnected") })
 	w.OnDisconnect(func(*live.Session) { f.log("leave", fmt.Sprintf("a page left (%d open)", f.open.Add(-1))) })

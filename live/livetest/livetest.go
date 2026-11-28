@@ -44,6 +44,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -152,6 +153,24 @@ func (s *Session) DoForm(action string, form url.Values) (any, error) {
 func Submit[In any](s *Session, cmd *live.Command[In], form url.Values) (any, error) {
 	s.t.Helper()
 	return s.DoForm(cmd.Name(), form)
+}
+
+// PostForm sends h the POST the runtime makes when the page submits a form to target with these fields, and
+// returns the answer: 204, or the error's status (400 carries the input errors).
+func (s *Session) PostForm(h http.Handler, target string, fields url.Values) *httptest.ResponseRecorder {
+	s.t.Helper()
+	r := httptest.NewRequest("POST", target, strings.NewReader(fields.Encode()))
+	for k, v := range s.req.Header {
+		r.Header[k] = slices.Clone(v)
+	}
+	r.RemoteAddr = s.req.RemoteAddr
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set(live.FormHeader, "1")
+	r.Header.Set(live.SidHeader, s.SID())
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+	s.collect()
+	return rec
 }
 
 func (s *Session) commandRequest() *http.Request {

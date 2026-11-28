@@ -128,10 +128,10 @@ func formPOSTReq(id, referer string) *http.Request {
 	return r
 }
 
-func TestFormPOSTDoubleSubmitRunsOnce(t *testing.T) {
+func TestFormDoubleSubmitRunsOnce(t *testing.T) {
 	w := NewWorld()
 	var runs atomic.Int32
-	h := NewCommand[noteIn]("note.add").FormPOST(w, func(*http.Request, noteIn) (string, error) {
+	h := NewCommand[noteIn]("note.add").Form(w, func(*http.Request, *Session, noteIn) (string, error) {
 		runs.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		return "/notes/1", nil
@@ -154,10 +154,10 @@ func TestFormPOSTDoubleSubmitRunsOnce(t *testing.T) {
 	}
 }
 
-func TestFormPOSTAfterRuntimeRunReturnsToPage(t *testing.T) {
+func TestFormAfterRuntimeRunReturnsToPage(t *testing.T) {
 	var runs atomic.Int32
 	w, ts, cmd := liveWorld(t, "s1", func(*Session, noteIn) (any, error) { runs.Add(1); return nil, nil })
-	h := cmd.FormPOST(w, func(*http.Request, noteIn) (string, error) { runs.Add(1); return "/notes", nil }, nil)
+	h := cmd.Form(w, func(*http.Request, *Session, noteIn) (string, error) { runs.Add(1); return "/notes", nil }, nil)
 	id := w.mintSubmit("s1")
 	postForm(t, ts, "s1", "note.add", id, url.Values{"title": {"a"}})
 	rec := httptest.NewRecorder()
@@ -167,10 +167,10 @@ func TestFormPOSTAfterRuntimeRunReturnsToPage(t *testing.T) {
 	}
 }
 
-func TestFormPOSTRefusedInputReleasesID(t *testing.T) {
+func TestFormRefusedInputReleasesID(t *testing.T) {
 	w := NewWorld()
 	var runs atomic.Int32
-	h := NewCommand[noteIn]("note.add").FormPOST(w, func(*http.Request, noteIn) (string, error) {
+	h := NewCommand[noteIn]("note.add").Form(w, func(*http.Request, *Session, noteIn) (string, error) {
 		if runs.Add(1) == 1 {
 			return "", Invalid("title", "taken")
 		}

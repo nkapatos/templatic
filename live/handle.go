@@ -41,6 +41,18 @@ func Status(code int, message string) error { return &StatusError{Code: code, Me
 // NotFound returns a 404 StatusError.
 func NotFound(message string) error { return Status(http.StatusNotFound, message) }
 
+// HTTPStatus returns the status an error answers with: 400 for input errors, a StatusError's code, else 500.
+func HTTPStatus(err error) int {
+	if len(InputErrors(err)) > 0 {
+		return http.StatusBadRequest
+	}
+	var se *StatusError
+	if errors.As(err, &se) && se.Code >= 400 && se.Code <= 599 {
+		return se.Code
+	}
+	return http.StatusInternalServerError
+}
+
 func writeStatusError(w http.ResponseWriter, err error) bool {
 	var se *StatusError
 	if !errors.As(err, &se) {

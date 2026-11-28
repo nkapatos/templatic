@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -11,6 +12,15 @@ import (
 
 	"examples/testing/components"
 )
+
+// add submits the page's add form with n, as the runtime posts it, and fails
+// the test unless it is accepted.
+func add(t *testing.T, w *live.World, s *livetest.Session, c *counter, n string) {
+	t.Helper()
+	if rec := s.PostForm(c.addForm(w, nil), "/add", url.Values{"n": {n}}); rec.Code != http.StatusNoContent {
+		t.Fatalf("add %s: %d %s", n, rec.Code, rec.Body)
+	}
+}
 
 // shown connects a page that rendered the log as it stands.
 func shown(t *testing.T, w *live.World, c *counter) *livetest.Session {
@@ -24,9 +34,7 @@ func TestAddReachesEveryPage(t *testing.T) {
 	c := newCounter(w)
 	a, b := shown(t, w, c), shown(t, w, c)
 
-	if _, err := livetest.Call(a, components.Add, components.AddIn{N: 2}); err != nil {
-		t.Fatal(err)
-	}
+	add(t, w, a, c, "2")
 	for name, s := range map[string]*livetest.Session{"a": a, "b": b} {
 		var got int
 		if !s.Cell(components.CountTopic, &got) || got != 2 {
@@ -40,13 +48,11 @@ func TestAddReachesEveryPage(t *testing.T) {
 
 func TestAddSwapsOnlyTheCallersTally(t *testing.T) {
 	w := live.NewWorld()
-	newCounter(w)
+	c := newCounter(w)
 	a, b := livetest.New(t, w), livetest.New(t, w)
 
-	for _, n := range []int{1, 3} {
-		if _, err := livetest.Call(a, components.Add, components.AddIn{N: n}); err != nil {
-			t.Fatal(err)
-		}
+	for _, n := range []string{"1", "3"} {
+		add(t, w, a, c, n)
 	}
 	if sw := a.Swaps(components.TallyTopic); len(sw) != 2 {
 		t.Fatalf("a: %d tally swaps, want 2", len(sw))
@@ -63,9 +69,7 @@ func TestAddAsAFormSubmit(t *testing.T) {
 	s := livetest.New(t, w)
 
 	// Form fields decode by the input's field types: "4" becomes 4.
-	if _, err := livetest.Submit(s, components.Add, url.Values{"n": {"4"}}); err != nil {
-		t.Fatal(err)
-	}
+	add(t, w, s, c, "4")
 	if got := c.count.Get(); got != 4 {
 		t.Fatalf("count = %d, want 4", got)
 	}
@@ -73,21 +77,17 @@ func TestAddAsAFormSubmit(t *testing.T) {
 
 func TestAddRefusesABadStep(t *testing.T) {
 	w := live.NewWorld()
-	newCounter(w)
+	c := newCounter(w)
 	s := livetest.New(t, w)
+	h := c.addForm(w, nil)
 
-	refused := func(what string, err error) {
-		t.Helper()
-		if errs := live.InputErrors(err); len(errs) != 1 || errs[0].Field != "n" {
-			t.Errorf("%s: err = %v, want one error on n", what, err)
+	// A refusal answers 400 with the errors by field, as the runtime receives them.
+	for _, n := range []string{"0", "500", "two"} {
+		rec := s.PostForm(h, "/add", url.Values{"n": {n}})
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"fields":{"n":`) {
+			t.Errorf("%s: %d %s, want 400 with an error on n", n, rec.Code, rec.Body)
 		}
 	}
-	_, err := livetest.Call(s, components.Add, components.AddIn{N: 0})
-	refused("0", err)
-	_, err = livetest.Call(s, components.Add, components.AddIn{N: 500})
-	refused("500", err)
-	_, err = livetest.Submit(s, components.Add, url.Values{"n": {"two"}})
-	refused("two", err)
 
 	if ev := s.Events(); len(ev) != 0 {
 		t.Fatalf("a refused add sent %d events, want none", len(ev))
@@ -124,9 +124,7 @@ func TestAPageTallyEndsWithItsSession(t *testing.T) {
 	// A session is retired when its test ends, so a subtest scopes one page.
 	t.Run("page", func(t *testing.T) {
 		s := livetest.New(t, w)
-		if _, err := livetest.Call(s, components.Add, components.AddIn{N: 1}); err != nil {
-			t.Fatal(err)
-		}
+		add(t, w, s, c, "1")
 	})
 	c.mu.Lock()
 	n := len(c.pages)
@@ -143,9 +141,7 @@ func TestAResumedPageCatchesUpOnTheLog(t *testing.T) {
 
 	// a loses its connection; b adds while a is away, which a does not see.
 	a.Drop()
-	if _, err := livetest.Call(b, components.Add, components.AddIn{N: 3}); err != nil {
-		t.Fatal(err)
-	}
+	add(t, w, b, c, "3")
 	if ops := a.Ops(components.LogTopic); len(ops) != 0 {
 		t.Fatalf("a got %d log ops while dropped, want 0", len(ops))
 	}

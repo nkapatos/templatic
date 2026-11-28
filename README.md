@@ -126,8 +126,8 @@ func (in AddIn) Validate() error {
 var Add = live.NewCommand[AddIn]("count.add")
 ```
 
-A page with a live cell and a form that sends the command (with JavaScript)
-or posts to `/add` (without it):
+A page with a live cell and a form that posts the command to `/add`, with
+JavaScript or without it:
 
 ```templ
 <p>Count: <strong>@ui.Cell(count)</strong></p>
@@ -138,14 +138,17 @@ or posts to `/add` (without it):
 }
 ```
 
-And the server side that changes the cell:
+And the server side that changes the cell, one function for both: with
+JavaScript the page stays and updates live, without it the browser is sent
+back to `/`:
 
 ```go
 count := live.NewCell(w, "count", 0)
-components.Add.Handle(w, func(s *live.Session, in components.AddIn) (any, error) {
-	count.Update(func(v int) int { return v + in.N })
-	return nil, nil
-})
+mux.Handle("POST /add", components.Add.Form(w,
+	func(r *http.Request, s *live.Session, in components.AddIn) (string, error) {
+		count.Update(func(v int) int { return v + in.N })
+		return "/", nil
+	}, invalid))
 ```
 
 ## What it is not

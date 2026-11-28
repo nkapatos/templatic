@@ -1,4 +1,4 @@
-import { CommandError, sendForm, upload } from "./commands";
+import { CommandError, postForm } from "./commands";
 import { isReady } from "./tc";
 
 /** formBody encodes entries as a native submit would: CRLF line breaks, file fields as their name. */
@@ -58,8 +58,19 @@ export function clearFormErrors(form: FailForm): void {
 	});
 }
 
-/** formFailure marks a 400 on the form, falls back to a native submit on 0, 409 or 5xx, and returns what it did. */
+/**
+ * formFailure marks a 400 on the form and shows another 4xx's message in its form error slot, falls back to a native
+ * submit on 0, 409 or 5xx, and returns what it did.
+ */
 export function formFailure(form: FailForm, err: unknown, submitter: HTMLElement | null = null): "marked" | "fallback" | "ignored" {
+	if (err instanceof CommandError && err.status > 400 && err.status < 500 && err.status !== 409 && err.formError) {
+		clearFormErrors(form);
+		form.setAttribute("data-tc-error", err.formError);
+		each(form.querySelectorAll("[data-tc-form-error]"), (el) => {
+			el.textContent = err.formError;
+		});
+		return "marked";
+	}
 	if (err instanceof CommandError && err.status === 400) {
 		clearFormErrors(form);
 		form.setAttribute("data-tc-error", err.message);
@@ -116,16 +127,14 @@ export function wireForms(): void {
 		const submitter = ev.submitter;
 		const fallbackSubmitter = (): HTMLElement | null =>
 			submitter && submitter.isConnected && (submitter as HTMLButtonElement).form === form ? submitter : null;
-		const sent = form.hasAttribute("data-tc-multipart")
-			? upload(action, form.getAttribute("action") ?? "", data)
-			: sendForm(action, formBody([...data.entries()].filter(([name]) => name !== SUBMIT)), {
-					noReload: true,
-					submit: typeof data.get(SUBMIT) === "string" ? (data.get(SUBMIT) as string) : undefined,
-					onSubmit: (id) => {
-						const field = form.querySelector<HTMLInputElement>(`input[name="${SUBMIT}"]`);
-						if (field) field.value = id;
-					},
-				});
+		// the form posts to its own action, as it would natively; the submission id rides in its fields
+		const body = form.hasAttribute("data-tc-multipart") ? data : formBody(data.entries());
+		const sent = postForm(action, form.getAttribute("action") ?? "", body, {
+			onSubmit: (id) => {
+				const field = form.querySelector<HTMLInputElement>(`input[name="${SUBMIT}"]`);
+				if (field) field.value = id;
+			},
+		});
 		void sent
 			.then(
 				() => clearFormErrors(form),

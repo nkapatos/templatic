@@ -69,13 +69,12 @@ func Form(name string, action string, opts ...FormOption) templ.Component {
 // FormOption configures a Form.
 type FormOption = Option
 
-// Multipart makes a FormFor form an upload form posting multipart/form-data
-// to action. The handler serves both paths: world.SessionFor(r) is non-nil
-// with JavaScript (answer 204), nil without (answer 303).
+// Multipart makes a FormFor form post multipart/form-data, for file fields.
 func Multipart() FormOption { return func(c *elemConfig) { c.multipart = true } }
 
-// FormFor renders a form that raises cmd on submit and POSTs to action
-// without JavaScript. It panics when In has a field no form can fill.
+// FormFor renders a form for cmd that POSTs to action, where cmd.Form serves
+// it with and without JavaScript. It panics when In has a field no form can
+// fill.
 func FormFor[In any](cmd *live.Command[In], action string, opts ...Option) templ.Component {
 	if err := form.Check(reflect.TypeFor[In]()); err != nil {
 		panic("templatic: ui.FormFor(" + cmd.Name() + "): " + err.Error())

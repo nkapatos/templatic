@@ -106,13 +106,16 @@
 // is [World.Command] with a [CommandHandler]; [Handle] adapts a typed
 // function to it.
 //
-// The same command serves browsers without JavaScript. [Command.FormPOST]
-// returns an [net/http.Handler] for the form's POST: it decodes the fields,
-// runs the handler's function and answers 303 to the URL that function
-// returns. Input errors go to a callback that usually renders the page again,
-// where ui.Failed shows them. A repeated submission with the same submission
-// id ([World.SubmitID]) is answered with the first outcome and does not run
-// again.
+// A form's command is served at the form's own action URL, with and without
+// JavaScript, by one function: [Command.Form] returns the
+// [net/http.Handler]. It decodes the fields and runs the function with the
+// request and, when the page has one, its live session. With JavaScript the
+// runtime posts the form there with [FormHeader] and the session id
+// ([SidHeader]) and gets 204 or the error; without JavaScript the browser is
+// sent 303 to the URL the function returns, and errors go to a callback that
+// usually renders the page again, where ui.Failed shows them. A repeated
+// submission with the same submission id ([World.SubmitID]) is answered with
+// the first outcome and does not run again.
 //
 // # Input and validation
 //
@@ -123,9 +126,8 @@
 // [errors.Join]; [InputErrors] lists the ones in an error. The client gets a
 // 400 response naming each field. Other handler errors may use [Status] or
 // [NotFound] to choose an HTTP status. [DecodeForm] and [Command.Decode]
-// decode and validate a form POST by hand. For uploads, [World.SessionFor]
-// finds the session of a multipart request and [WriteInvalid] answers a
-// refused file.
+// decode and validate a form POST by hand. [World.SessionFor] finds the
+// session a runtime POST names and [WriteInvalid] answers a refused field.
 //
 // # Page tokens
 //

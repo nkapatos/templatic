@@ -64,7 +64,7 @@ the other. Then turn JavaScript off and sign up again.
   show in the same field as the client's errors, and TanStack Form
   clears each one when its field next passes the change check.
 - **The same command without JavaScript.** The island's body is a plain
-  `ui.FormFor(Register, "/signup", failed)`, and `Register.FormPOST` in
+  `ui.FormFor(Register, "/signup", failed)`, and `Register.Form` in
   `main.go` takes its POST: a refusal renders the page again with 422,
   the errors in `ui.FieldError` and the typed values back; a success
   redirects to `/signup`. The refused input is not marked `aria-invalid`

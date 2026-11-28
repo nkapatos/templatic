@@ -44,7 +44,7 @@ func (c *Command[In]) Handle(w *World, fn func(s *Session, in In) (any, error)) 
 	w.Command(c.name, Handle(fn))
 }
 
-// Decode reads the command's input from a no-JS form POST and runs Validate.
+// Decode reads the command's input from a form POST and runs Validate.
 func (c *Command[In]) Decode(r *http.Request) (In, error) { return DecodeForm[In](r) }
 
 // DecodeForm decodes a form POST into In and runs In.Validate; route wildcards win
@@ -77,29 +77,65 @@ func DecodeForm[In any](r *http.Request) (In, error) {
 	return decodeInput[In](formArgs(vals))
 }
 
-// FormPOST serves the command's no-JS form POST: it answers 303 to the URL fn
-// returns, and input errors go to invalid (400 when nil). A repeat of a form's
-// submission id answers the first run's outcome without calling fn again.
-func (c *Command[In]) FormPOST(
+// FormHeader marks a form POST the runtime sent with JavaScript: it is answered with 204 or an error, never a
+// redirect.
+const FormHeader = "X-TC-Form"
+
+// Form serves the command at its form's action URL, with and without JavaScript. fn gets the request, the page's
+// live session (nil when there is none, as without JavaScript) and the decoded input, and returns where a browser
+// without JavaScript goes next. With JavaScript the page stays: input errors mark the form, another error's
+// message fills its form error slot. Without JavaScript every error goes to invalid (when nil, a plain answer with
+// the error's status). A repeat of a form's submission id answers the first run's outcome without calling fn.
+func (c *Command[In]) Form(
 	w *World,
-	fn func(r *http.Request, in In) (redirect string, err error),
+	fn func(r *http.Request, s *Session, in In) (redirect string, err error),
 	invalid func(w http.ResponseWriter, r *http.Request, err error),
 ) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		js := r.Header.Get(FormHeader) != ""
+		var s *Session
+		if js {
+			if s = w.SessionFor(r); s == nil {
+				// the runtime then posts the form natively, so the input is not lost
+				http.Error(rw, "live: unknown session", http.StatusConflict)
+				return
+			}
+		}
+		answer := func(rw http.ResponseWriter, to string, err error) {
+			if js {
+				jsOutcome(rw, err)
+				return
+			}
+			formOutcome(rw, r, to, err, invalid)
+		}
 		in, err := c.Decode(r)
 		if err != nil {
-			formOutcome(rw, r, "", err, invalid)
+			answer(rw, "", err)
 			return
 		}
 		claims, ok := w.verifySubmit(r.PostForm.Get(form.SubmitField))
+		if ok && s == nil {
+			// without JavaScript the submission id still names the page's session, if it is live
+			s = w.sessionByID(claims.SID, r)
+		}
+		if ok && s != nil && claims.SID != s.sid {
+			ok = false // an id minted for another session runs unguarded, as a form without one
+		}
+		if js {
+			rw.Header().Set(SubmitHeader, w.mintSubmit(s.sid))
+		}
 		if !ok {
-			to, err := fn(r, in)
-			formOutcome(rw, r, to, err, invalid)
+			to, err := fn(r, s, in)
+			answer(rw, to, err)
 			return
 		}
 		sub, first := w.claimSubmit(claims)
 		if !first {
-			sub.replayForm(rw, r)
+			if js {
+				sub.replayJS(rw)
+			} else {
+				sub.replayForm(rw, r)
+			}
 			return
 		}
 		settled := false
@@ -108,23 +144,39 @@ func (c *Command[In]) FormPOST(
 				sub.settle(false)
 			}
 		}()
-		to, err := fn(r, in)
+		to, err := fn(r, s, in)
 		sub.redirect = to
+		if js {
+			tee := &responseTee{ResponseWriter: rw}
+			answer(tee, to, err)
+			sub.js, sub.status, sub.ctype, sub.body = true, tee.status, tee.Header().Get("Content-Type"), tee.body.Bytes()
+		} else {
+			answer(rw, to, err)
+		}
 		settled = true
 		sub.settle(err == nil)
-		formOutcome(rw, r, to, err, invalid)
 	})
+}
+
+// jsOutcome answers the runtime's form POST as a command: 204, the 400 input envelope, the error's status, or 500.
+func jsOutcome(w http.ResponseWriter, err error) {
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case WriteInputError(w, err):
+	case writeStatusError(w, err):
+	default:
+		http.Error(w, "live: command failed", http.StatusInternalServerError)
+	}
 }
 
 func formOutcome(w http.ResponseWriter, r *http.Request, to string, err error, invalid func(http.ResponseWriter, *http.Request, error)) {
 	switch {
 	case err == nil:
 		http.Redirect(w, r, to, http.StatusSeeOther)
+	case invalid != nil:
+		invalid(w, r, err)
 	case len(InputErrors(err)) > 0:
-		if invalid != nil {
-			invalid(w, r, err)
-			return
-		}
 		http.Error(w, inputText(err), http.StatusBadRequest)
 	case writeStatusError(w, err):
 	default:

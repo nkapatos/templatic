@@ -17,7 +17,6 @@ templ Room(room string, chat, activity templ.Component, name string, failed ui.O
 				@chat
 				<div { ui.Hook("clear-on-ok", Post.Name())... }>
 					@ui.FormFor(Post, "/rooms/"+room+"/messages", failed, ui.Class("post")) {
-						<input type="hidden" name="room" value={ room }/>
 						@ui.FormError()
 						<label>
 							Name
@@ -48,19 +47,13 @@ templ MessageView(m Message) {
 	<strong>{ m.Author }</strong>
 	<span>{ m.Text }</span>
 	@ui.FormFor(Like, messageURL(m)+"/like", ui.Class("act")) {
-		@messageFields(m)
 		<button type="submit" aria-label="Like">♥ { strconv.Itoa(m.Likes) }</button>
 	}
 	@ui.FormFor(Delete, messageURL(m)+"/delete", ui.Class("act")) {
-		@messageFields(m)
 		<button type="submit" aria-label="Delete">✕</button>
 	}
 }
 
-templ messageFields(m Message) {
-	<input type="hidden" name="room" value={ m.Room }/>
-	<input type="hidden" name="id" value={ m.Key() }/>
-}
 
 // EventView is one activity line, inside the <li> its collection renders.
 templ EventView(e Event) {

@@ -48,15 +48,11 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(rw http.ResponseWriter, r *http.Request) { home(rw, r, nil, http.StatusOK) })
-	// Without JavaScript the form POSTs here; the page has no live session,
-	// so only the count and the log change.
-	mux.Handle("POST /add", components.Add.FormPOST(w,
-		func(_ *http.Request, in components.AddIn) (string, error) {
-			return "/", c.add(in.N)
-		},
-		func(rw http.ResponseWriter, r *http.Request, err error) {
-			home(rw, r, ui.Failed(r, err), http.StatusUnprocessableEntity)
-		}))
+	// The form POSTs here, with and without JavaScript; without it the page
+	// has no live session, so only the count and the log change.
+	mux.Handle("POST /add", c.addForm(w, func(rw http.ResponseWriter, r *http.Request, err error) {
+		home(rw, r, ui.Failed(r, err), http.StatusUnprocessableEntity)
+	}))
 	w.Mount(mux, "/live")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("public"))))
 	mux.Handle("GET /_templatic/", http.StripPrefix("/_templatic/", templatic.Assets(distDir)))

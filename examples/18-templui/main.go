@@ -83,14 +83,6 @@ func main() {
 	s.add("Read templUI's docs")
 	s.add("Install the components")
 
-	components.Add.Handle(w, func(_ *live.Session, in components.AddIn) (any, error) {
-		s.add(in.Title)
-		return nil, nil
-	})
-	components.Toggle.Handle(w, func(_ *live.Session, in components.ToggleIn) (any, error) {
-		return nil, s.toggle(in.ID)
-	})
-
 	manifests, err := templatic.ManifestFor(os.Getenv("TC_MODE"), distDir)
 	if err != nil {
 		log.Fatalf("templui: %v (run `npm run generate` first)", err)
@@ -106,13 +98,13 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(rw http.ResponseWriter, r *http.Request) { home(rw, r, nil, http.StatusOK) })
-	mux.Handle("POST /add", components.Add.FormPOST(w,
-		func(_ *http.Request, in components.AddIn) (string, error) {
+	mux.Handle("POST /add", components.Add.Form(w,
+		func(_ *http.Request, _ *live.Session, in components.AddIn) (string, error) {
 			s.add(in.Title)
 			return "/", nil
 		}, refused))
-	mux.Handle("POST /toggle", components.Toggle.FormPOST(w,
-		func(_ *http.Request, in components.ToggleIn) (string, error) {
+	mux.Handle("POST /toggle", components.Toggle.Form(w,
+		func(_ *http.Request, _ *live.Session, in components.ToggleIn) (string, error) {
 			return "/", s.toggle(in.ID)
 		}, refused))
 	w.Mount(mux, "/live")

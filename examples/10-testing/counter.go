@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,8 +27,8 @@ type counter struct {
 	pages map[string]components.PageAdds // by session id
 }
 
-// newCounter declares the count and the log on w, registers Add's JS handler
-// and forgets a page's adds when its session ends.
+// newCounter declares the count and the log on w and forgets a page's adds
+// when its session ends.
 func newCounter(w *live.World) *counter {
 	c := &counter{
 		count: live.NewCell(w, components.CountTopic, 0),
@@ -36,18 +37,29 @@ func newCounter(w *live.World) *counter {
 			Renders(components.EntryView).Elements("ol", "li").Tail().Limit(keepEntries),
 		pages: map[string]components.PageAdds{},
 	}
-	components.Add.Handle(w, func(s *live.Session, in components.AddIn) (any, error) {
-		if err := c.add(in.N); err != nil {
-			return nil, err
-		}
-		return nil, components.TallyRegion.Swap(s, c.mark(s.SID(), in.N))
-	})
 	w.OnDisconnect(func(s *live.Session) {
 		c.mu.Lock()
 		delete(c.pages, s.SID())
 		c.mu.Unlock()
 	})
 	return c
+}
+
+// addForm serves Add at the form's action URL; a page with a live session
+// also gets its own tally swapped. Without JavaScript the browser is sent
+// back to the page, and refused input goes to invalid.
+func (c *counter) addForm(w *live.World, invalid func(http.ResponseWriter, *http.Request, error)) http.Handler {
+	return components.Add.Form(w, func(_ *http.Request, s *live.Session, in components.AddIn) (string, error) {
+		if err := c.add(in.N); err != nil {
+			return "", err
+		}
+		if s != nil {
+			if err := components.TallyRegion.Swap(s, c.mark(s.SID(), in.N)); err != nil {
+				return "", err
+			}
+		}
+		return "/", nil
+	}, invalid)
 }
 
 // add adds n to the count and logs it on every page.

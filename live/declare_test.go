@@ -169,7 +169,7 @@ func TestCellFamily(t *testing.T) {
 	}
 }
 
-func TestFormPOSTAndPathValues(t *testing.T) {
+func TestFormAndPathValues(t *testing.T) {
 	type askIn struct {
 		ID   string `json:"id"`
 		Text string `json:"text"`
@@ -177,8 +177,8 @@ func TestFormPOSTAndPathValues(t *testing.T) {
 	cmd := NewCommand[askIn]("brain.ask")
 	var got askIn
 	mux := http.NewServeMux()
-	mux.Handle("POST /brain/{id}", cmd.FormPOST(NewWorld(),
-		func(_ *http.Request, in askIn) (string, error) {
+	mux.Handle("POST /brain/{id}", cmd.Form(NewWorld(),
+		func(_ *http.Request, _ *Session, in askIn) (string, error) {
 			got = in
 			if in.Text == "" {
 				return "", Invalid("text", "empty")
@@ -192,8 +192,20 @@ func TestFormPOSTAndPathValues(t *testing.T) {
 			return "/brain/" + in.ID, nil
 		},
 		func(w http.ResponseWriter, _ *http.Request, err error) {
-			w.WriteHeader(422)
-			_, _ = io.WriteString(w, InputErrors(err)[0].Field)
+			// every error comes here: the app renders its own page for each
+			if ies := InputErrors(err); len(ies) > 0 {
+				w.WriteHeader(422)
+				_, _ = io.WriteString(w, ies[0].Field)
+				return
+			}
+			var se *StatusError
+			if errors.As(err, &se) {
+				w.WriteHeader(se.Code)
+				_, _ = io.WriteString(w, "app page: "+se.Message)
+				return
+			}
+			w.WriteHeader(500)
+			_, _ = io.WriteString(w, "app error page")
 		}))
 	do := func(form url.Values) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
@@ -209,11 +221,11 @@ func TestFormPOSTAndPathValues(t *testing.T) {
 	if rec := do(url.Values{}); rec.Code != 422 || rec.Body.String() != "text" {
 		t.Fatalf("invalid: %d %q", rec.Code, rec.Body.String())
 	}
-	if rec := do(url.Values{"text": {"boom"}}); rec.Code != 500 || strings.Contains(rec.Body.String(), "store") {
-		t.Fatalf("errors stay detail-free 500: %d %q", rec.Code, rec.Body.String())
+	if rec := do(url.Values{"text": {"boom"}}); rec.Code != 500 || rec.Body.String() != "app error page" {
+		t.Fatalf("an internal error goes to invalid: %d %q", rec.Code, rec.Body.String())
 	}
-	if rec := do(url.Values{"text": {"gone"}}); rec.Code != 404 || !strings.Contains(rec.Body.String(), "no such conversation") {
-		t.Fatalf("StatusError keeps its code: %d %q", rec.Code, rec.Body.String())
+	if rec := do(url.Values{"text": {"gone"}}); rec.Code != 404 || rec.Body.String() != "app page: no such conversation" {
+		t.Fatalf("a StatusError goes to invalid: %d %q", rec.Code, rec.Body.String())
 	}
 }
 

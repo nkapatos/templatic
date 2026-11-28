@@ -33,7 +33,7 @@ var Like = live.NewCommand[LikeIn]("item.like")
 type Feature struct {
 	List     http.Handler // GET /
 	Show     http.Handler // GET /items/{id}
-	LikeForm http.Handler // POST /items/{id}/like, Like without JavaScript
+	LikeForm http.Handler // POST /items/{id}/like, Like with and without JavaScript
 }
 
 // Register declares the likes on w, handles Like and returns the handlers.
@@ -46,9 +46,6 @@ func Register(w *live.World) *Feature {
 		likes.Get(id).Update(func(n int) int { return n + 1 })
 		return nil
 	}
-	Like.Handle(w, func(_ *live.Session, in LikeIn) (any, error) {
-		return nil, like(in.ID)
-	})
 	return &Feature{
 		List: templ.Handler(List(catalog, likes)),
 		Show: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -60,7 +57,7 @@ func Register(w *live.World) *Feature {
 			}
 			templ.Handler(Detail(it, likes.Get(id))).ServeHTTP(rw, r)
 		}),
-		LikeForm: Like.FormPOST(w, func(_ *http.Request, in LikeIn) (string, error) {
+		LikeForm: Like.Form(w, func(_ *http.Request, _ *live.Session, in LikeIn) (string, error) {
 			return "/items/" + in.ID, like(in.ID)
 		}, nil),
 	}

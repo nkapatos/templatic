@@ -32,10 +32,9 @@ turn JavaScript off and like it again.
   router, so it does not care which one mounts it. The shared document
   and the 404 page are in `internal/page`.
 - **The id comes from the path.** `Show` reads `r.PathValue("id")`.
-  `Like.FormPOST` decodes the form and lets route wildcards win over form
+  `Like.Form` decodes the form and lets route wildcards win over form
   fields, so a POST to `/items/1/like` likes item 1 whatever its `id`
-  field says. The runtime's request has no route, so the form also
-  carries a hidden `id`. `TestLikeFormUsesThePathID` in `main_test.go`
+  field says, with and without JavaScript. `TestLikeFormUsesThePathID` in `main_test.go`
   posts a forged `id` through `routes`.
 - **One cell per item.** `live.NewCellFamily(w, "likes", 0)` declares a
   cell for each item on first use; `ui.Cell(likes.Get(id))` renders it on

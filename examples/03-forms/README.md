@@ -27,25 +27,23 @@ the same.
   `ui.FieldError`; the favorite rule names no field (`live.Invalid("", …)`)
   and lands in `ui.FormError`. A field the decoder refuses is reported
   together with the rules on the other fields.
-- **`ui.FormFor(Save, action)` serves both transports**
-  (`components/pages.templ`). With JavaScript the runtime sends the fields
-  to the command's handler (`Save.Handle` in `main.go`); a refusal marks the
-  slots and `aria-invalid` without a reload.
-- **Without JavaScript, `Save.FormPOST` takes the POST** (`main.go`). It
-  decodes and validates the same way. Success answers 303 to the URL the
-  function returns (post/redirect/get). A refusal goes to the callback,
-  which renders the page again with `ui.Failed(r, err)` and status 422:
-  `ui.FieldValue` and `ui.FieldValues` put back what was typed, ticked and
-  selected (`components/fields.go`).
-- **The id comes from the URL or the form.** The edit form posts to
-  `/books/{id}`; route wildcards win over form fields, so `BookIn.ID` is the
-  path's. The runtime's request has no route, so the form also carries a
-  hidden `id`.
+- **One handler for both transports.** `ui.FormFor(Save, action)`
+  (`components/pages.templ`) posts to its action URL with and without
+  JavaScript, and `Save.Form` (`saveHandler` in `main.go`) serves it. With
+  JavaScript the runtime posts the fields itself; a refusal marks the slots
+  and `aria-invalid` without a reload. Without JavaScript success answers
+  303 to the URL the function returns (post/redirect/get), and a refusal
+  goes to the callback, which renders the page again with
+  `ui.Failed(r, err)` and status 422: `ui.FieldValue` and `ui.FieldValues`
+  put back what was typed, ticked and selected (`components/fields.go`).
+- **The id comes from the URL.** The edit form posts to `/books/{id}`;
+  route wildcards win over form fields, so `BookIn.ID` is the path's on
+  both transports.
 - **Not found.** `GET /books/{id}` for an unknown id renders the 404 page.
-  Saving an unknown id returns `live.NotFound` from `store.save`: the
-  command answers 404 on both transports. The no-JS POST gets the error's
-  plain-text message; a refused no-JS POST for an unknown id renders the 404
-  page from the callback.
+  Saving an unknown id returns `live.NotFound` from `store.save`. With
+  JavaScript its message shows in the form's `ui.FormError`; without, the
+  callback renders the 404 page with the status `live.HTTPStatus(err)`
+  gives.
 - **The list is a world region.** `w.Region("books", …)` in `main.go`;
   pages render it with `@list`, and every save calls `w.Redraw`, so each
   open page gets the new list, including a JS page when someone saves
@@ -53,19 +51,19 @@ the same.
 - **A form submission runs at most once per session.** `ui.FormFor` adds a
   hidden submission id. A second POST with the same id (a double click, a
   resubmitted page) gets the first run's redirect and saves nothing.
-  `TestFormPOSTRunsOncePerSubmission` in `main_test.go` posts one twice.
+  `TestFormRunsOncePerSubmission` in `main_test.go` posts one twice.
 - **Clearing a form is the app's.** After a successful command the runtime
   leaves the fields as they are; the `reset-on-ok` hook in `client/app.ts`
   clears the new-book form when `book.save` succeeds.
-- **Testing without a browser.** `main_test.go` runs the command with
-  `livetest.Submit` (form fields) and `livetest.Call` (typed input), and
-  reads the region's redraw with `WaitSwap`.
+- **Testing without a browser.** `main_test.go` posts the form to the real
+  handler as the runtime does (`livetest.Session.PostForm`), checks the
+  answer, and reads the region's redraw with `WaitSwap`.
 
 ## Files
 
 | File | Holds |
 |---|---|
-| `main.go` | the world, the region, both transports of `Save`, the routes |
+| `main.go` | the world, the region, `Save`'s handler, the routes |
 | `store.go` | the in-memory reading list; `save` returns `live.NotFound` |
 | `components/book.go` | `Book`, `BookIn`, `Validate`, the `Save` command |
 | `components/pages.templ` | the list, the new and edit pages, the 404 page, the shared fields |

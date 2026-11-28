@@ -54,8 +54,8 @@ func main() {
 	mux.Handle("GET /map", templ.Handler(components.MapPage(places)))
 	// Without JS the arrows POST here and the browser follows the redirect
 	// back. They cannot send a bad input, so a refusal is a plain 400.
-	mux.Handle("POST /move", components.Move.FormPOST(w,
-		func(_ *http.Request, in components.MoveIn) (string, error) { return "/", b.move(in) },
+	mux.Handle("POST /move", components.Move.Form(w,
+		func(_ *http.Request, _ *live.Session, in components.MoveIn) (string, error) { return "/", b.move(in) },
 		nil))
 	w.Mount(mux, "/live")
 	// The app's own static files, served by the app.

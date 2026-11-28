@@ -42,12 +42,6 @@ func main() {
 	w := live.NewWorld(opts...)
 	count := live.NewCell(w, "count", 0)
 
-	components.Add.Handle(w, func(s *live.Session, in components.AddIn) (any, error) {
-		count.Update(func(v int) int { return v + in.N })
-		log.Printf("production: add %d from %s", in.N, clientAddr(s.CommandRequest().Header, s.CommandRequest().RemoteAddr))
-		return nil, nil
-	})
-
 	// TC_MODE=dev follows `templatic dev` rebuilds and reloads open pages;
 	// otherwise the manifest is read once.
 	manifests, err := templatic.ManifestFor(os.Getenv("TC_MODE"), distDir)
@@ -58,10 +52,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /{$}", page(func(*http.Request) templ.Component { return components.Home(count, nil) }))
-	mux.Handle("POST /add", components.Add.FormPOST(w,
-		func(r *http.Request, in components.AddIn) (string, error) {
+	mux.Handle("POST /add", components.Add.Form(w,
+		func(r *http.Request, _ *live.Session, in components.AddIn) (string, error) {
 			count.Update(func(v int) int { return v + in.N })
-			log.Printf("production: add %d from %s (form)", in.N, clientAddr(r.Header, r.RemoteAddr))
+			log.Printf("production: add %d from %s", in.N, clientAddr(r.Header, r.RemoteAddr))
 			return "/", nil
 		},
 		func(rw http.ResponseWriter, r *http.Request, err error) {

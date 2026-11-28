@@ -38,10 +38,14 @@ its logins in a store.
 - **The UI follows the role, the server enforces it.** `Board` renders the
   notice form only for admins (`components/pages.templ`); a viewer who
   raises `notice.post` by hand still gets 403.
-- **Without JavaScript** the forms POST to `/notice` and `/wave`.
-  `FormPOST` has no session, so these routes sit behind `signedIn` and the
-  user is the cookie's.
-- **CSRF.** `FormPOST` and the login forms have no CSRF token. The whole
+- **One handler per form, with and without JavaScript.** The forms POST
+  to `/notice` and `/wave` either way, so these routes sit behind
+  `signedIn` and the user is the cookie's. With JavaScript the page's live
+  session comes too, and `formUser` (`auth.go`) refuses with 401 when that
+  page belongs to another user. A refusal's message shows in the form's
+  `ui.FormError`; without JavaScript the page renders again with the
+  error's status.
+- **CSRF.** The forms and the login forms have no CSRF token. The whole
   app is wrapped in the standard library's `http.CrossOriginProtection`,
   which refuses cross-origin POSTs (including to `/live/commands`).
 - **Logout is a POST.** A logout link would be fetched by `Boot`'s

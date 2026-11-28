@@ -26,6 +26,7 @@ export function stubFetch(...replies: Array<Reply | Promise<Reply>>): Call[] {
 			ok: r.status >= 200 && r.status < 300,
 			headers: new Headers(r.headers),
 			json: () => Promise.resolve(r.body),
+			text: () => Promise.resolve(typeof r.body === "string" ? r.body : r.body === undefined ? "" : JSON.stringify(r.body)),
 		}));
 	});
 	return calls;
