@@ -38,7 +38,8 @@ func startDevOut(t *testing.T, out *bytes.Buffer, watch ...string) *devHarness {
 	d := &devLoop{
 		opts: generate.Options{Root: root, SkipBundle: true, Mode: generate.ModeDev, Plugins: []generate.Plugin{watcher}},
 		root: root, client: "client", dist: ".templatic/dist",
-		debounce: 30 * time.Millisecond,
+		// wide enough that a burst written at once lands in one window on a slow runner
+		debounce: 100 * time.Millisecond,
 		stdout:   out, stderr: out,
 	}
 	d.onBuild = func(err error) { mu.Lock(); defer mu.Unlock(); h.builds <- err }
@@ -68,7 +69,8 @@ func (h *devHarness) none(why string) {
 	select {
 	case err := <-h.builds:
 		h.t.Fatalf("%s: unexpected build (%v)", why, err)
-	case <-time.After(200 * time.Millisecond):
+	// longer than the debounce plus a build, so a stray build lands here rather than in the next step
+	case <-time.After(400 * time.Millisecond):
 	}
 }
 
@@ -93,7 +95,6 @@ func TestDevLoopRebuildsOnSourcesOnly(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		h.write("client/modules/m.ts", "export const n = "+string(rune('0'+i))+";\n")
-		time.Sleep(5 * time.Millisecond)
 	}
 	if err := h.next(); err != nil {
 		t.Fatal(err)
