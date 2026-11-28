@@ -10,10 +10,10 @@
 // elements with data-tc-* attributes. The client runtime, started by
 // [github.com/nkapatos/templatic.Boot], finds those markers and keeps the
 // elements in step with a [github.com/nkapatos/templatic/live.World]: it
-// updates a cell's text, replaces a region's contents, adds stream items and
-// turns clicks and submits into commands. The components do not talk to the
-// world themselves, so each takes the live declaration it binds to, or its
-// topic name. Components that name a topic or an action panic on a name
+// updates a cell's text, replaces a region's contents, adds stream items,
+// turns clicks into commands and posts forms to their action. The
+// components do not talk to the world themselves, so each takes the live
+// declaration it binds to, or its topic name. Components that name a topic or an action panic on a name
 // outside [A-Za-z0-9_.-]+.
 //
 // # Binding state
@@ -32,14 +32,15 @@
 // # Raising commands
 //
 //   - [Button] renders a button that raises a [live.Command] with a value of
-//     its input type.
+//     its input type, served by [live.Command.Handle]. With [PostTo] it is a
+//     one-button form instead, served like FormFor.
 //   - [Link] renders an anchor that raises the command and, without
 //     JavaScript, follows its href. [Swaps] names the region it swaps and
 //     overrides the one the command declared.
-//   - [FormFor] renders a form that raises the command on submit and POSTs to
-//     an action URL without JavaScript. It panics when the
-//     input type has a field a form cannot fill. [Multipart] makes it an
-//     upload form.
+//   - [FormFor] renders a form that POSTs to its action URL, through the
+//     runtime with JavaScript and natively without; [live.Command.Form]
+//     serves it there for both. It panics when the input type has a field a
+//     form cannot fill. [Multipart] makes it an upload form.
 //
 // Button, Link and FormFor take their content as templ children.
 //

@@ -89,8 +89,8 @@ contracts apps rely on:
   shows it, an island binds it or client code reads it.
 - **Islands are units.** A server fragment that contains an island never
   morphs into the island's live DOM; the island remounts.
-- **Forms degrade, and run once.** A command can also be served as a plain
-  form post, so a page without JavaScript still works. A form submission runs at
+- **Forms degrade, and run once.** A form posts to its own URL with or
+  without JavaScript, so a page without JavaScript still works. A form submission runs at
   most once per session: a resubmission, by the runtime after a failure or
   by a user without JavaScript, gets the first run's outcome.
 
@@ -147,6 +147,14 @@ contracts apps rely on:
   in a cookie or localStorage: a cookie is shared by tabs while sessions are
   per page, templatic sets no headers on the app's pages (rule 3), and
   localStorage is open to any script and outlives the page.
+- **A form posts to its own action URL, with and without JavaScript**
+  (#76). One `net/http` handler (`Command.Form`) serves both: with
+  JavaScript the runtime posts the same fields with the session id and
+  gets 204 or the errors; without it the browser gets a 303 or the
+  re-rendered page. The app's router, middleware and path values apply
+  to both transports alike, so authorization written for one holds for the
+  other. The commands endpoint carries only JSON sends (`Handle`, `send`)
+  and history replays.
 - **The generator reads Go through the type checker**, after templ's
   generation: real types across packages, aliases, embedded fields,
   constants and build tags, instead of resolving syntax by hand.

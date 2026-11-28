@@ -5,7 +5,6 @@ import (
 	"encoding/json/jsontext"
 	"maps"
 	"net/http"
-	"net/url"
 	"slices"
 	"sync"
 
@@ -88,7 +87,7 @@ func init() {
 			},
 		}
 	}
-	livehook.Dispatch = func(sa any, action string, args jsontext.Value, form url.Values, r *http.Request) (any, error) {
+	livehook.Dispatch = func(sa any, action string, args jsontext.Value, r *http.Request) (any, error) {
 		s := sa.(*Session)
 		s.world.mu.RLock()
 		fn, ok := s.world.commands[action]
@@ -100,11 +99,7 @@ func init() {
 		s.mu.Lock()
 		s.cmdReq = info
 		s.mu.Unlock()
-		in := jsonArgs(args)
-		if form != nil {
-			in = formArgs(form)
-		}
-		res, err := fn(s, in)
+		res, err := fn(s, jsonArgs(args))
 		// as the command endpoint does: the session is where the result declares
 		if push, ok := res.(Push); ok && err == nil {
 			s.setReportedURL(push.URL())

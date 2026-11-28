@@ -39,7 +39,6 @@ type commandRequest struct {
 	SID    string         `json:"sid"`
 	Action string         `json:"action"`
 	Args   jsontext.Value `json:"args"`
-	Form   *string        `json:"form"`
 	Submit string         `json:"submit,omitempty"`
 	// Subscribe, sent with no action, maps collection topics to the version the page holds.
 	Subscribe map[string]int64 `json:"subscribe,omitempty"`

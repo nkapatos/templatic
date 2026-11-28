@@ -79,17 +79,6 @@ describe("pop", () => {
 		expect(commands.lastNavRecord().decision).toBe("replay");
 	});
 
-	test("a popped pair from a form replays as a form", async () => {
-		const calls = stubFetch({ status: 200, body: { url: "/daily/2026-01-05" } });
-		commands.applyPush("daily.open", { form: "day=2026-01-05" }, "/daily/2026-01-05");
-		commands.applyPush("daily.open", { form: "day=2026-01-07" }, "/daily/2026-01-07");
-		historyMod.wire();
-		history.back();
-		await settle();
-		expect(calls).toHaveLength(1);
-		expect([calls[0].json().form, calls[0].json().args]).toEqual(["day=2026-01-05", undefined]);
-	});
-
 	test("a replay's corrected url replaces the entry the tab is on", async () => {
 		pushed({ status: 200, body: { url: "/daily/2026-01-30" } });
 		history.back();

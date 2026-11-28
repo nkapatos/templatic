@@ -18,17 +18,18 @@ npm run check-browser        # the browser check
 ## What it shows
 
 - **The app under test.** `newCounter` in `counter.go` declares the `count`
-  cell and the `log` collection on a `live.World`, and registers `Add`'s
-  handler. `main.go` calls the same function on its world, so a test builds
+  cell and the `log` collection on a `live.World`, and `addForm` returns
+  `Add`'s form handler (`Add.Form`). `main.go` mounts the same handler, so a test builds
   exactly what the app serves, without HTTP. The tally is a session region
   (`//templatic:region` on `Tally` in `components/home.templ`); `Add`
   swaps it for the session that called it.
-- **Commands.** `livetest.Call(s, components.Add, components.AddIn{N: 2})`
-  runs the command through its input decoding, `Validate` and handler.
-  `livetest.Submit` does the same with form fields, as the runtime sends a
-  form: `"4"` decodes into the `int` field. A refused input comes back as
-  an error that `live.InputErrors` lists, and sends nothing
-  (`TestAddRefusesABadStep`).
+- **Forms.** `s.PostForm(c.addForm(w, nil), "/add", fields)` sends the
+  handler the POST the runtime makes when the page submits the form, so it
+  runs with this session: input decoding, `Validate` and the function.
+  Fields decode by the input's types: `"4"` becomes 4
+  (`TestAddAsAFormSubmit`). A refused input answers 400 and sends nothing
+  (`TestAddRefusesABadStep`). `livetest.Call` runs a command registered
+  with `Handle` the same way, with typed input.
 - **Cells.** `s.Cell(components.CountTopic, &got)` decodes the value the
   session holds. Two `livetest.New` sessions on one world are two pages:
   an add on one sets the cell on both (`TestAddReachesEveryPage`).
@@ -39,7 +40,7 @@ npm run check-browser        # the browser check
   `s.Show(c.log.Topic(), c.log.Version())` is a page that rendered the log
   as it stands. `s.Ops(topic)` then returns each change, its HTML with the
   item's root element included.
-- **Waiting.** A command's events are recorded by the time `Call` returns.
+- **Waiting.** A form's events are recorded by the time `PostForm` returns.
   An update with no command behind it, such as `tick` from a goroutine,
   arrives later: `s.WaitOp(topic, substr, d)` and `s.WaitSwap` poll for
   it and fail the test after `d` (`TestTickLogsFromAGoroutine`).

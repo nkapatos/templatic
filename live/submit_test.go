@@ -20,9 +20,10 @@ type noteIn struct {
 	Title string `json:"title"`
 }
 
-func postForm(t *testing.T, ts *httptest.Server, sid, action, submit string, form url.Values) (*http.Response, string) {
+// postSubmit raises action with title as its JSON input and submit as its run-once key.
+func postSubmit(t *testing.T, ts *httptest.Server, sid, action, submit, title string) (*http.Response, string) {
 	t.Helper()
-	body, _ := json.Marshal(map[string]any{"sid": sid, "action": action, "form": form.Encode(), "submit": submit})
+	body, _ := json.Marshal(map[string]any{"sid": sid, "action": action, "args": map[string]string{"title": title}, "submit": submit})
 	resp, err := http.Post(ts.URL+"/live/commands", "application/json", strings.NewReader(string(body)))
 	if err != nil {
 		t.Fatal(err)
@@ -44,14 +45,14 @@ func liveWorld(t *testing.T, sid string, fn func(*Session, noteIn) (any, error))
 	return w, ts, cmd
 }
 
-func TestFormCommandRepeatAnswersFirstOutcome(t *testing.T) {
+func TestSubmitRepeatAnswersFirstOutcome(t *testing.T) {
 	var runs atomic.Int32
 	w, ts, _ := liveWorld(t, "s1", func(_ *Session, in noteIn) (any, error) {
 		return map[string]any{"n": runs.Add(1)}, nil
 	})
 	id := w.mintSubmit("s1")
-	r1, b1 := postForm(t, ts, "s1", "note.add", id, url.Values{"title": {"a"}})
-	r2, b2 := postForm(t, ts, "s1", "note.add", id, url.Values{"title": {"a"}})
+	r1, b1 := postSubmit(t, ts, "s1", "note.add", id, "a")
+	r2, b2 := postSubmit(t, ts, "s1", "note.add", id, "a")
 	if runs.Load() != 1 || r1.StatusCode != 200 || r2.StatusCode != 200 || b1 != b2 {
 		t.Fatalf("runs %d: %d %q / %d %q", runs.Load(), r1.StatusCode, b1, r2.StatusCode, b2)
 	}
@@ -59,13 +60,13 @@ func TestFormCommandRepeatAnswersFirstOutcome(t *testing.T) {
 	if c, ok := w.verifySubmit(next); !ok || c.SID != "s1" || next == id {
 		t.Fatalf("fresh id %q", next)
 	}
-	postForm(t, ts, "s1", "note.add", next, url.Values{"title": {"a"}})
+	postSubmit(t, ts, "s1", "note.add", next, "a")
 	if runs.Load() != 2 {
 		t.Fatalf("fresh id must run again: %d", runs.Load())
 	}
 }
 
-func TestFormCommandFailureReleasesID(t *testing.T) {
+func TestSubmitFailureReleasesID(t *testing.T) {
 	var runs atomic.Int32
 	w, ts, _ := liveWorld(t, "s1", func(*Session, noteIn) (any, error) {
 		if runs.Add(1) == 1 {
@@ -74,10 +75,10 @@ func TestFormCommandFailureReleasesID(t *testing.T) {
 		return nil, nil
 	})
 	id := w.mintSubmit("s1")
-	if r, _ := postForm(t, ts, "s1", "note.add", id, nil); r.StatusCode != 500 {
+	if r, _ := postSubmit(t, ts, "s1", "note.add", id, ""); r.StatusCode != 500 {
 		t.Fatalf("first: %d", r.StatusCode)
 	}
-	if r, _ := postForm(t, ts, "s1", "note.add", id, nil); r.StatusCode != 204 || runs.Load() != 2 {
+	if r, _ := postSubmit(t, ts, "s1", "note.add", id, ""); r.StatusCode != 204 || runs.Load() != 2 {
 		t.Fatalf("retry: %d runs %d", r.StatusCode, runs.Load())
 	}
 }
@@ -86,9 +87,9 @@ func TestSubmitIDIsBoundToItsSession(t *testing.T) {
 	var runs atomic.Int32
 	w, ts, _ := liveWorld(t, "s1", func(*Session, noteIn) (any, error) { runs.Add(1); return nil, nil })
 	other := w.mintSubmit("s2")
-	postForm(t, ts, "s1", "note.add", other, nil)
-	postForm(t, ts, "s1", "note.add", other, nil)
-	postForm(t, ts, "s1", "note.add", "forged.id", nil)
+	postSubmit(t, ts, "s1", "note.add", other, "")
+	postSubmit(t, ts, "s1", "note.add", other, "")
+	postSubmit(t, ts, "s1", "note.add", "forged.id", "")
 	if runs.Load() != 3 {
 		t.Fatalf("runs %d", runs.Load())
 	}
@@ -105,18 +106,13 @@ func TestSubmitIDIsNotAPageToken(t *testing.T) {
 }
 
 func TestSubmitFieldIsNotInput(t *testing.T) {
-	var got url.Values
-	w := NewWorld()
-	cmd := NewCommand[noteIn]("note.add")
-	cmd.Handle(w, func(s *Session, in noteIn) (any, error) { return nil, nil })
-	w.Command("note.raw", func(s *Session, a Args) (any, error) { got, _ = a.Form(); return nil, nil })
-	ts := serveWorld(t, w)
-	st := openStream(t, ts, "s1")
-	defer st.Close()
-	st.discardUntilReady(t)
-	postForm(t, ts, "s1", "note.raw", "", url.Values{"title": {"a"}, form.SubmitField: {"x"}})
-	if got.Has(form.SubmitField) || got.Get("title") != "a" {
-		t.Fatalf("%v", got)
+	type in struct {
+		Title  string `json:"title"`
+		Submit string `json:"_tc_submit"`
+	}
+	got, err := DecodeForm[in](formReq(url.Values{"title": {"a"}, form.SubmitField: {"x"}}))
+	if err != nil || got.Submit != "" || got.Title != "a" {
+		t.Fatalf("%+v %v", got, err)
 	}
 }
 
@@ -159,7 +155,7 @@ func TestFormAfterRuntimeRunReturnsToPage(t *testing.T) {
 	w, ts, cmd := liveWorld(t, "s1", func(*Session, noteIn) (any, error) { runs.Add(1); return nil, nil })
 	h := cmd.Form(w, func(*http.Request, *Session, noteIn) (string, error) { runs.Add(1); return "/notes", nil }, nil)
 	id := w.mintSubmit("s1")
-	postForm(t, ts, "s1", "note.add", id, url.Values{"title": {"a"}})
+	postSubmit(t, ts, "s1", "note.add", id, "a")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, formPOSTReq(id, "http://example.com/inbox?x=1"))
 	if runs.Load() != 1 || rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/inbox?x=1" {

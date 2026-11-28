@@ -59,7 +59,7 @@ Open it in two windows and press a status button in one.
   the region: the "Report incident…" item in each card's dropdown opens
   the modal outside it.
 - **The modal's form is a templatic form.** `ui.FormFor(Report,
-  "/report")` inside the modal raises `incident.report`; a refusal shows
+  "/report")` inside the modal posts to `/report`; a refusal shows
   its field errors in the modal. `client/modal.ts` preselects the
   service from the trigger's `data-service` (`show.bs.modal`) and hides
   the modal and resets the form when the command succeeds.

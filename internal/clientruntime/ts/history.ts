@@ -1,4 +1,4 @@
-import { pairOf, recordNav, send, sendForm } from "./commands";
+import { pairOf, recordNav, send } from "./commands";
 import { navigate } from "./nav";
 
 /** wire mounts the popstate handler that replays a pushed entry's command or reloads; idempotent. */
@@ -14,11 +14,7 @@ export function wire(): void {
 			return;
 		}
 		// the browser already moved onto this entry, so the replay must not push a URL
-		navigate(() =>
-			pair.form !== undefined
-				? sendForm(pair.action, pair.form, { navHandled: true })
-				: send(pair.action, pair.args, { navHandled: true }),
-		)
+		navigate(() => send(pair.action, pair.args, { navHandled: true }))
 			.then((raw) => {
 				if (raw === undefined || popSerial !== serial) return; // a later pop owns this entry
 				const url = (raw as { url?: string }).url;

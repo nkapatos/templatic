@@ -55,9 +55,6 @@ func (a Args) Into(v any) error {
 	return nil
 }
 
-// Form returns the submitted fields when the args came from a form.
-func (a Args) Form() (url.Values, bool) { return a.form, a.isForm }
-
 // InputErrors returns every *InputError in err's tree, in order.
 func InputErrors(err error) []*InputError {
 	var out []*InputError

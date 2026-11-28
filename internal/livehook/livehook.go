@@ -5,7 +5,6 @@ package livehook
 import (
 	"encoding/json/jsontext"
 	"net/http"
-	"net/url"
 )
 
 // Event is one recorded wire event.
@@ -34,8 +33,8 @@ var (
 	// Connect registers session sid on world as if its stream connected with r
 	// and a page token carrying params.
 	Connect func(world any, sid string, params map[string]string, r *http.Request) Conn
-	// Dispatch runs action on the session, with form args when form is non-nil.
-	Dispatch func(session any, action string, args jsontext.Value, form url.Values, r *http.Request) (any, error)
+	// Dispatch runs action on the session with JSON args.
+	Dispatch func(session any, action string, args jsontext.Value, r *http.Request) (any, error)
 	// CellValue returns the current {"v":…} body of a session or world cell topic.
 	CellValue func(session any, topic string) (jsontext.Value, bool)
 )

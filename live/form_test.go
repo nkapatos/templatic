@@ -2,7 +2,6 @@ package live
 
 import (
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -46,6 +45,8 @@ func (in orderIn) Validate() error {
 	return errors.Join(errs...)
 }
 
+// submitBoth posts form to cmd.Form without JavaScript and as the runtime does; it returns the no-JS input,
+// the runtime's response and the no-JS error, and fails when the two transports disagree.
 func submitBoth(t *testing.T, form url.Values) (orderIn, *http.Response, error) {
 	t.Helper()
 	cmd := NewCommand[orderIn]("order.place")
@@ -53,16 +54,14 @@ func submitBoth(t *testing.T, form url.Values) (orderIn, *http.Response, error) 
 
 	w := NewWorld()
 	var viaJS orderIn
-	cmd.Handle(w, func(_ *Session, in orderIn) (any, error) { viaJS = in; return nil, nil })
+	h := cmd.Form(w, func(_ *http.Request, _ *Session, in orderIn) (string, error) { viaJS = in; return "/", nil }, nil)
 	ts := serveWorld(t, w)
 	st := openStream(t, ts, "form-sid")
 	t.Cleanup(func() { st.Close() })
 	st.discardUntilReady(t)
-	body, _ := json.Marshal(map[string]any{"sid": "form-sid", "action": "order.place", "form": form.Encode()})
-	resp, err := http.Post(ts.URL+"/live/commands", "application/json", strings.NewReader(string(body)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, jsFormReq("form-sid", form))
+	resp := rec.Result()
 	t.Cleanup(func() { resp.Body.Close() })
 	if noJSErr == nil && resp.StatusCode == http.StatusNoContent && !reflect.DeepEqual(noJS, viaJS) {
 		t.Fatalf("transports disagree:\nno-JS %+v\nJS    %+v", noJS, viaJS)
@@ -150,15 +149,6 @@ func TestTypedCallStaysJSON(t *testing.T) {
 	}
 	if e := errorBody(t, postCommand(t, ts, "json-sid", "order.place", jsontext.Value(`{"title":"x","qty":"2"}`))); e.Fields["qty"] == "" {
 		t.Fatalf("%+v", e)
-	}
-	body := `{"sid":"json-sid","action":"order.place","args":{},"form":"qty=1"}`
-	resp, err := http.Post(ts.URL+"/live/commands", "application/json", strings.NewReader(body))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("args+form: %d", resp.StatusCode)
 	}
 }
 
