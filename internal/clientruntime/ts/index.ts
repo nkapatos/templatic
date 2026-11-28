@@ -12,10 +12,18 @@ export type { IslandContext } from "./context";
 export { defineHook } from "./hooks";
 export type { HookCallbacks, HookContext } from "./hooks";
 
-/** Send raises a command; it resolves with the handler's result and rejects with a CommandError. */
-export function send<R = unknown>(action: string, args?: unknown): Promise<R | null> {
-	return rawSend(action, args) as Promise<R | null>;
+/** SendOptions tunes send. */
+export interface SendOptions {
+	/** once is a key from submitKey(): sends with the same key run the command at most once per session, and a repeat gets the first outcome. Keep it until the submission succeeds. */
+	once?: string;
 }
+
+/** Send raises a command; it resolves with the handler's result and rejects with a CommandError. */
+export function send<R = unknown>(action: string, args?: unknown, opts?: SendOptions): Promise<R | null> {
+	return rawSend(action, args, opts?.once ? { submit: opts.once } : undefined) as Promise<R | null>;
+}
+
+export { submitKey } from "./commands";
 
 /** State returns the runtime's window.tcState() snapshot. */
 export function state(): TcState {

@@ -113,7 +113,8 @@ func (c *Command[In]) Form(
 			answer(rw, "", err)
 			return
 		}
-		claims, ok := w.verifySubmit(r.PostForm.Get(form.SubmitField))
+		// with JavaScript s is known, so a runtime-made key counts too
+		claims, ok := w.submitFor(r.PostForm.Get(form.SubmitField), s)
 		if ok && s == nil {
 			// without JavaScript the submission id still names the page's session, if it is live
 			s = w.sessionByID(claims.SID, r)

@@ -802,13 +802,13 @@ func dyn(n string) { live.NewCommand[Add]("todo." + n) }
 	}
 	got := read(t, filepath.Join(dir, ".templatic", "commands.ts"))
 	for _, want := range []string{
-		`import { send as rawSend } from "templatic";`,
+		`import { send as rawSend, type SendOptions } from "templatic";`,
 		"export declare namespace todo {\n\tinterface Add {\n\t\ttext: string;\n\t\ttags: string[];\n\t}\n}",
 		"export declare namespace ui {\n\tinterface Open {\n\t\tid: string;\n\t}\n}",
 		`"todo.add": todo.Add;`,
 		`"todo.open": ui.Open;`,
 		`"todo.reset": Record<string, never>;`,
-		"export function send<K extends CommandName, R = unknown>(name: K, args: Commands[K]): Promise<R | null>",
+		"export function send<K extends CommandName, R = unknown>(name: K, args: Commands[K], opts?: SendOptions): Promise<R | null>",
 		"// note: todo/todo.go:16 (computed name)",
 	} {
 		if !strings.Contains(got, want) {

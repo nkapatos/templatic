@@ -117,10 +117,18 @@ export function onSessionEnd(fn: (reason: string) => void): Unsubscribe;
 export function scan(root: ParentNode): Promise<void>;
 
 // @public
-export function send<R = unknown>(action: string, args?: unknown): Promise<R | null>;
+export function send<R = unknown>(action: string, args?: unknown, opts?: SendOptions): Promise<R | null>;
+
+// @public
+export interface SendOptions {
+    once?: string;
+}
 
 // @public
 export function state(): TcState;
+
+// @public
+export function submitKey(): string;
 
 // @public
 export interface TcEvents {

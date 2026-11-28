@@ -103,7 +103,7 @@ func writeCommandsTS(opts Options, prog *program) error {
 	b.WriteString(commandsHeader)
 	b.WriteString("// Typed commands: every live.NewCommand[In](\"name\") under the app root.\n")
 	b.WriteString("// The runtime's untyped send stays available from \"templatic\".\n\n")
-	b.WriteString("import { send as rawSend } from \"templatic\";\n\n")
+	b.WriteString("import { send as rawSend, type SendOptions } from \"templatic\";\n\n")
 	for _, ns := range slices.Sorted(maps.Keys(nsBodies)) {
 		fmt.Fprintf(&b, "export declare namespace %s {\n", ns)
 		for _, n := range slices.Sorted(maps.Keys(nsBodies[ns])) {
@@ -121,7 +121,7 @@ func writeCommandsTS(opts Options, prog *program) error {
 	}
 	b.WriteString("}\n\nexport type CommandName = keyof Commands;\n\n")
 	b.WriteString("// send raises a declared command; R is the handler's result, untyped on the Go side.\n")
-	b.WriteString("export function send<K extends CommandName, R = unknown>(name: K, args: Commands[K]): Promise<R | null> {\n\treturn rawSend<R>(name, args);\n}\n")
+	b.WriteString("export function send<K extends CommandName, R = unknown>(name: K, args: Commands[K], opts?: SendOptions): Promise<R | null> {\n\treturn rawSend<R>(name, args, opts);\n}\n")
 	slices.Sort(notes)
 	for _, n := range append(skipped, notes...) {
 		b.WriteString("// note: ")

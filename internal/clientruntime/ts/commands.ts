@@ -189,6 +189,13 @@ function raise(action: string, payload: Payload, opts?: SendOptions): Promise<un
 	});
 }
 
+/** submitKey returns a fresh run-once key: a send or form submission carrying it runs at most once per session. */
+export function submitKey(): string {
+	// getRandomValues, unlike randomUUID, exists outside secure contexts (plain HTTP to a LAN host)
+	const bytes = crypto.getRandomValues(new Uint8Array(16));
+	return "c." + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /** FormPostOptions carries a form's submission id handling. */
 export interface FormPostOptions {
 	/** onSubmit receives the fresh submission id the answer carries. */

@@ -11,10 +11,19 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/nkapatos/templatic/internal/form"
 )
 
 // SubmitHeader carries a fresh submission id on a form command's response.
 const SubmitHeader = "X-TC-Submit"
+
+// SubmitField names the hidden field that carries a form's submission id.
+const SubmitField = form.SubmitField
+
+// clientNoncePrefix marks a submission key the runtime made itself, for a form rendered without an id (one that
+// arrived in a swap) or an island's send; it is honored only for the session the request names.
+const clientNoncePrefix = "c."
 
 // The domain prefix keeps a submission id from verifying as a page token.
 const submitDomain = "tc-submit\x00"
@@ -91,6 +100,19 @@ func (w *World) verifySubmit(id string) (submitClaims, bool) {
 		return c, false
 	}
 	return c, true
+}
+
+// submitFor reads a submission value: a signed id, or on a request whose session is known (s non-nil) a client
+// key, scoped to s.
+func (w *World) submitFor(v string, s *Session) (submitClaims, bool) {
+	if c, ok := w.verifySubmit(v); ok {
+		return c, true
+	}
+	key, ok := strings.CutPrefix(v, clientNoncePrefix)
+	if !ok || s == nil || len(key) < 16 || len(key) > 128 {
+		return submitClaims{}, false
+	}
+	return submitClaims{SID: s.sid, Nonce: clientNoncePrefix + s.sid + "." + key, Issued: w.clock().Unix()}, true
 }
 
 // claimSubmit claims a verified id. The first caller runs (first is true) and
