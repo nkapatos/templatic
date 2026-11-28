@@ -44,7 +44,14 @@ export class CommandError extends Error {
 }
 
 async function failure(action: string, res: Response): Promise<CommandError> {
-	if (res.status !== 400) return new CommandError(action, res.status);
+	if (res.status !== 400) {
+		// a 4xx says why in plain text (live.Status, live.NotFound); 5xx and 409 carry nothing to show
+		if (res.status > 400 && res.status < 500 && res.status !== 409) {
+			const text = await res.text().catch(() => "");
+			if (text.trim()) return new CommandError(action, res.status, { formError: text.trim() });
+		}
+		return new CommandError(action, res.status);
+	}
 	try {
 		const env = (await res.json()) as { error?: { message?: string; fields?: Record<string, string> } };
 		return new CommandError(action, 400, { fields: env.error?.fields, formError: env.error?.message });
@@ -182,22 +189,30 @@ function raise(action: string, payload: Payload, opts?: SendOptions): Promise<un
 	});
 }
 
-/** upload POSTs a multipart body to url with the session in X-TC-Sid; a redirect rejects with status 0. */
-export function upload(action: string, url: string, body: FormData): Promise<void> {
+/** FormPostOptions carries a form's submission id handling. */
+export interface FormPostOptions {
+	/** onSubmit receives the fresh submission id the answer carries. */
+	onSubmit?: (id: string) => void;
+}
+
+/**
+ * postForm POSTs a form's body to its action URL with the session in X-TC-Sid and X-TC-Form marking the runtime:
+ * the server answers 204 or the error. A redirect rejects with status 0, so the form falls back to a native post.
+ */
+export function postForm(action: string, url: string, body: FormData | string, opts?: FormPostOptions): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const fire = (): void => {
 			emit("command", { action, phase: "sent" });
-			void fetch(url, {
-				method: "POST",
-				headers: { "X-TC-Sid": sessionID() },
-				body,
-				redirect: "manual",
-			}).then(async (res) => {
+			const headers: Record<string, string> = { "X-TC-Sid": sessionID(), "X-TC-Form": "1" };
+			if (typeof body === "string") headers["Content-Type"] = "application/x-www-form-urlencoded";
+			void fetch(url, { method: "POST", headers, body, redirect: "manual" }).then(async (res) => {
 				if (res.type === "opaqueredirect" || (res.status >= 300 && res.status < 400)) {
 					emit("command", { action, phase: "error", status: 0 });
 					reject(new CommandError(action, 0));
 					return;
 				}
+				const next = res.headers?.get("X-TC-Submit");
+				if (next) opts?.onSubmit?.(next);
 				if (!res.ok) {
 					const err = await failure(action, res);
 					emit("command", { action, phase: "error", status: res.status });

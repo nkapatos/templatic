@@ -135,7 +135,7 @@ describe("multipart upload", () => {
 	test("multipart upload posts the FormData to the action, never the JSON bus", async () => {
 		tc.markReady();
 		const calls = stubFetch({ status: 204 });
-		await commands.upload("import.upload", "/import", payload());
+		await commands.postForm("import.upload", "/import", payload());
 		expect(calls).toHaveLength(1);
 		expect(calls[0].url).toBe("/import");
 		expect(calls[0].init.method).toBe("POST");
@@ -153,7 +153,7 @@ describe("multipart upload", () => {
 	test("multipart upload 400 rejects with the field for marking", async () => {
 		tc.markReady();
 		stubFetch({ status: 400, body: { error: { fields: { file: "too large" } } } });
-		const err = await commands.upload("import.upload", "/import", new FormData()).then(
+		const err = await commands.postForm("import.upload", "/import", new FormData()).then(
 			() => null,
 			(e: unknown) => e,
 		);
@@ -169,7 +169,7 @@ describe("multipart upload", () => {
 	])("multipart upload %j falls back", async (reply) => {
 		tc.markReady();
 		stubFetch(reply);
-		const err = await commands.upload("import.upload", "/import", new FormData()).then(
+		const err = await commands.postForm("import.upload", "/import", new FormData()).then(
 			() => null,
 			(e: unknown) => e,
 		);
@@ -216,6 +216,7 @@ describe("wireForms", () => {
 	test("a form submit before ready goes native; once ready one command is in flight per form", async () => {
 		const f = form(`<input name="title" value="t"><input type="hidden" name="_tc_submit" value="id1">`);
 		f.dataset.tcForm = "note.capture";
+		f.setAttribute("action", "/notes");
 		const nativeSubmit = submitSpy(f);
 		const field = control(f, '[name="_tc_submit"]') as HTMLInputElement;
 		forms.wireForms();
@@ -227,18 +228,37 @@ describe("wireForms", () => {
 		expect(submit(f)).toBe(true);
 		expect(submit(f)).toBe(true);
 		expect(calls).toHaveLength(1);
-		const sent = calls[0].json();
-		expect([sent.action, sent.form, sent.args]).toEqual(["note.capture", "title=t", undefined]);
-		expect(sent.submit).toBe("id1");
+		// posted to the form's own action, as natively, with the runtime's headers
+		expect(calls[0].url).toBe("/notes");
+		expect(calls[0].init.body).toBe("title=t&_tc_submit=id1");
+		expect(calls[0].init.headers).toMatchObject({ "X-TC-Form": "1", "X-TC-Sid": "test-sid" });
 		gate.resolve({ status: 204, headers: { "X-TC-Submit": "id2" } });
 		await settle();
 		expect(field.value).toBe("id2");
 		expect(submit(f)).toBe(true);
 		expect(calls).toHaveLength(2);
-		expect(calls[1].json().submit).toBe("id2");
+		expect(calls[1].init.body).toBe("title=t&_tc_submit=id2");
 		expect(nativeSubmit).not.toHaveBeenCalled();
 		f.setAttribute("data-tc-fallback", "");
 		expect(submit(f)).toBe(false);
 		expect(calls).toHaveLength(2);
+	});
+});
+
+describe("errors that name no field", () => {
+	const submit = (f: HTMLFormElement): boolean => !f.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+	test("a 4xx's message fills the form error slot; a later success clears it", async () => {
+		const f = form(`<input name="title" value="t"><span data-tc-form-error></span>`);
+		f.dataset.tcForm = "note.edit";
+		f.setAttribute("action", "/notes/999");
+		forms.wireForms();
+		tc.markReady();
+		stubFetch({ status: 404, body: "no note 999" }, { status: 204 });
+		submit(f);
+		await settle();
+		expect(f.querySelector("[data-tc-form-error]")!.textContent).toBe("no note 999");
+		submit(f);
+		await settle();
+		expect(f.querySelector("[data-tc-form-error]")!.textContent).toBe("");
 	});
 });

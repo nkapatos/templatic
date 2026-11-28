@@ -194,8 +194,8 @@ func TestFormPromotesEmbedded(t *testing.T) {
 	}
 }
 
-func TestFormPOSTListsEveryError(t *testing.T) {
-	h := NewCommand[orderIn]("order.place").FormPOST(NewWorld(), func(*http.Request, orderIn) (string, error) { return "/", nil }, nil)
+func TestFormListsEveryError(t *testing.T) {
+	h := NewCommand[orderIn]("order.place").Form(NewWorld(), func(*http.Request, *Session, orderIn) (string, error) { return "/", nil }, nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, formReq(url.Values{"qty": {"x"}}))
 	body, _ := io.ReadAll(rec.Result().Body)
@@ -218,8 +218,8 @@ func TestFormPointerInput(t *testing.T) {
 	}
 }
 
-func TestFormPOSTBodyTooLarge(t *testing.T) {
-	h := http.MaxBytesHandler(NewCommand[orderIn]("order.big").FormPOST(NewWorld(), func(*http.Request, orderIn) (string, error) { return "/", nil }, nil), 64)
+func TestFormBodyTooLarge(t *testing.T) {
+	h := http.MaxBytesHandler(NewCommand[orderIn]("order.big").Form(NewWorld(), func(*http.Request, *Session, orderIn) (string, error) { return "/", nil }, nil), 64)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, formReq(url.Values{"title": {strings.Repeat("x", 200)}}))
 	if rec.Code != http.StatusRequestEntityTooLarge {

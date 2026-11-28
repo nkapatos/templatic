@@ -47,7 +47,7 @@
 //
 // A no-JS POST that fails validation renders the page again. Pass [Failed]
 // with the request and the error from [live.Command.Decode] (or from the
-// FormPOST callback) as the form's option. Inside the form, [FieldError]
+// [live.Command.Form] callback) as the form's option. Inside the form, [FieldError]
 // shows the message for one field and [FormError] shows errors that name no
 // field. [FieldValue] and [FieldValues] return what the user typed, to put
 // back into the inputs, and fall back to a default on a plain render.
