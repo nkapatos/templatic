@@ -108,6 +108,19 @@ export function defineHook<A = unknown>(name: string, callbacks: HookCallbacks<A
 
 /** morphCallbacks are the idiomorph callbacks that drive hook updates and removal. */
 export const morphCallbacks = {
+	// A morph keeps what the user controls in the focused field: its typed value or check, or the chosen option of a
+	// focused select. Its other attributes and its children still morph.
+	beforeAttributeUpdated(attr: string, el: Element): boolean {
+		const active = document.activeElement;
+		if (!active || active === document.body) return true;
+		if (el === active && (attr === "value" || attr === "checked")) {
+			return !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement);
+		}
+		if (attr === "selected" && active instanceof HTMLSelectElement && el instanceof HTMLOptionElement) {
+			return el.closest("select") !== active;
+		}
+		return true;
+	},
 	beforeNodeMorphed(oldNode: Node, newNode: Node): boolean {
 		const inst = instances.get(oldNode as Element);
 		if (inst && (oldNode as Element).outerHTML !== (newNode as Element).outerHTML) {

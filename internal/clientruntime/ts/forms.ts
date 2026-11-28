@@ -1,3 +1,4 @@
+import { swapTargetMissing, swapsAttr } from "./actions";
 import { CommandError, postForm, submitKey } from "./commands";
 import { isReady } from "./tc";
 
@@ -122,6 +123,11 @@ export function wireForms(): void {
 
 		// no live session: submit natively rather than queue
 		if (!isReady()) return;
+		// the command swaps a region this page lacks: the native post renders the page that has it
+		if (swapTargetMissing(form, document)) {
+			console.debug(`tc: ${form.dataset.tcForm} swaps ${form.getAttribute(swapsAttr)}, absent here — posting natively`);
+			return;
+		}
 		ev.preventDefault();
 		if (inflight.has(form)) return;
 		inflight.add(form);

@@ -89,14 +89,23 @@ export function apply(ev: WireEvent): void {
 	scheduleFlush();
 }
 
+function runFlush(): void {
+	if (!flushScheduled) return;
+	flushScheduled = false;
+	flush();
+}
+
+// A hidden tab runs no animation frames, so events would pile up until it shows; a timer drains them meanwhile.
 function scheduleFlush(): void {
 	if (flushScheduled) return;
 	flushScheduled = true;
-	requestAnimationFrame(() => {
-		flushScheduled = false;
-		flush();
-	});
+	if (document.hidden) setTimeout(runFlush, 0);
+	else requestAnimationFrame(runFlush);
 }
+
+document.addEventListener("visibilitychange", () => {
+	if (document.hidden && flushScheduled) setTimeout(runFlush, 0);
+});
 
 // A throwing tcBind, morph or hook must neither block later events nor stay queued (it would re-throw every frame).
 function flush(): void {
@@ -179,11 +188,20 @@ function morph(topic: string, html: string): void {
 	emit("swap:before", { topic, el: region });
 	// idiomorph soft-matches a same-position host and would morph the payload's placeholder
 	// into the island's live DOM, destroying its state; remove hosts so the payload's land fresh.
+	const held: Array<[Comment, Element]> = [];
 	for (const host of region.querySelectorAll("[data-tc-island]")) {
-		host.replaceWith(document.createComment("tc-island"));
+		const mark = document.createComment("tc-island");
+		host.replaceWith(mark);
+		held.push([mark, host]);
 	}
-	// innerHTML keeps the region marker; outerHTML would replace it and the next swap would find nothing.
-	Idiomorph.morph(region, html, { morphStyle: "innerHTML", callbacks: morphCallbacks });
+	try {
+		// innerHTML keeps the region marker; outerHTML would replace it and the next swap would find nothing.
+		Idiomorph.morph(region, html, { morphStyle: "innerHTML", callbacks: morphCallbacks });
+	} catch (err) {
+		// a failed morph must not cost the islands their state: those still marked go back
+		for (const [mark, host] of held) if (mark.isConnected) mark.replaceWith(host);
+		throw err;
+	}
 	forget(region);
 	subscribeShown(region);
 	subscribeUsed(region);

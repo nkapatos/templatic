@@ -26,9 +26,7 @@ const indexes = new WeakMap<Element, Map<string, Element>>();
 // idiomorph's ignoreActiveValue skips the focused element's children too, so it is set only when the focused
 // element holds a typed value: a focused button or link still re-renders.
 function morphOptions() {
-	const a = document.activeElement;
-	const typed = a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement;
-	return { callbacks: morphCallbacks, ignoreActiveValue: typed, morphStyle: "outerHTML" as const };
+	return { callbacks: morphCallbacks, morphStyle: "outerHTML" as const };
 }
 
 /** forget drops the item indexes of containers under root (root included), after a morph rewrote them. */
