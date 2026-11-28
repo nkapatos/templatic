@@ -385,3 +385,16 @@ describe("failure containment", () => {
 		expect(state.lastErrors.live).toBe("recorded failure");
 	});
 });
+
+describe("topics the page uses", () => {
+	test("a swap subscribes to the cells and regions it brings in, once, and not to the swapped region itself", async () => {
+		document.body.innerHTML = configScript() + `<div data-tc-region="pane"></div>`;
+		tc.markReady();
+		const calls = stubFetch({ status: 204 });
+		const html = `<span data-tc-cell="price.x">1</span><div data-tc-region="inner"></div>`;
+		await frame({ kind: "swap", topic: "pane", html });
+		await frame({ kind: "swap", topic: "pane", html: html + "<p>more</p>" });
+		await vi.runAllTimersAsync();
+		expect(calls.map((c) => c.json())).toEqual([{ sid: "test-sid", subscribe: { "price.x": -1, inner: -1 } }]);
+	});
+});

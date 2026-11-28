@@ -3,10 +3,10 @@ import { isReady, onReady, readConfig, sessionID } from "./tc";
 // Topics this connection is subscribed to; a new connection starts from what the page holds.
 const subscribed = new Set<string>();
 
-// Each collection form reports the topics the page holds, at their versions (-1: no known version).
+// Each source reports topics the page holds, at their versions (-1: no known version): collections, cells, regions.
 const sources: Array<() => Map<string, number>> = [];
 
-/** holdsFrom adds a source of the collection topics the page holds and their versions. */
+/** holdsFrom adds a source of the topics the page holds and their versions. */
 export function holdsFrom(fn: () => Map<string, number>): void {
 	sources.push(fn);
 }
@@ -16,7 +16,8 @@ function held(): Map<string, number> {
 	for (const fn of sources) {
 		for (const [topic, v] of fn()) {
 			const prev = out.get(topic);
-			out.set(topic, prev === undefined ? v : Math.min(prev, v));
+			// a known version beats -1: an island's bind can name a collection the page holds at a version
+			out.set(topic, prev === undefined || prev < 0 ? v : v < 0 ? prev : Math.min(prev, v));
 		}
 	}
 	return out;
@@ -81,7 +82,7 @@ function post(topics: Record<string, number>): void {
 		})
 		.catch((err: unknown) => {
 			for (const topic of Object.keys(topics)) subscribed.delete(topic);
-			console.error("tc: collection subscribe failed — the page reloads to catch up", err);
+			console.error("tc: subscribe failed — the page reloads to catch up", err);
 			location.reload();
 		});
 }

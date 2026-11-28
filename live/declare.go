@@ -261,8 +261,8 @@ func (r *SessionRegion[M]) Swap(s *Session, m M) error {
 	return s.world.Swap(s, r.topic, r.mustRender()(m))
 }
 
-// Refresh re-renders the region for every session from model; model returns false
-// to skip a session.
+// Refresh re-renders the region from model for every session whose page shows it; model returns false to skip
+// a session.
 func (r *SessionRegion[M]) Refresh(w *World, model func(s *Session) (M, bool)) error {
 	render := r.mustRender()
 	var first error
