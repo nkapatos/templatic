@@ -61,8 +61,6 @@ other, and turn it back on.
 - **Without JavaScript** the forms post and the page shows the room's kept
   messages and events; it does not update until the next load. Pages with
   JavaScript get no-JS changes live.
-- **Testing without a browser.** `feed_test.go` shows a room to a
-  `livetest` session (`Show`) and reads the changes with `Ops`.
 
 ## New pages and reconnects
 
@@ -88,7 +86,6 @@ other, and turn it back on.
 |---|---|
 | `main.go` | the world, the tick goroutine, the pages, the no-JS post, like and delete, the routes |
 | `feed.go` | the room collections and the activity log, `post`, `like`, `remove`, `log` and `tick` |
-| `feed_test.go` | reach, like and delete, the refusal and the limit, tested with `livetest` |
 | `components/message.go` | `Message`, `Event`, `PostIn`, `MessageIn`, and the `Post`, `Like` and `Delete` commands |
 | `components/pages.templ` | the room page, the item views with their forms, the 404 page |
 | `components/layout.templ` | the document and the room links |

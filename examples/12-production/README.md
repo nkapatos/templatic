@@ -106,10 +106,6 @@ not: [#52](https://github.com/nkapatos/templatic/issues/52)). To ship, run `go t
 - **No single binary yet.** The bundle and its manifest cannot be served
   or read from an `embed.FS`, so they ship beside the binary
   ([#47](https://github.com/nkapatos/templatic/issues/47)).
-- **The middleware is tested without a server.** `compress_test.go`
-  checks what is compressed and what is not, `Vary` and
-  `Content-Length`, and that an event stream's first frame arrives at
-  `Flush`, uncompressed.
 
 ## Files
 
@@ -117,7 +113,6 @@ not: [#52](https://github.com/nkapatos/templatic/issues/52)). To ship, run `go t
 |---|---|
 | `main.go` | the world, the command, the mux, `page`, the server, its timeouts and shutdown |
 | `compress.go` | the gzip middleware |
-| `compress_test.go` | its table test and the event-stream test |
 | `components/count.go` | the `Add` command and `AddIn` |
 | `components/home.templ` | the page: the count and the form |
 | `components/layout.templ` | the document, `Head`, `Boot` |

@@ -39,8 +39,7 @@ its logins in a store.
   session comes too, and `formUser` (`auth.go`) refuses with 401 when that
   page belongs to another user. A refusal's message shows in the form's
   `ui.FormError`; without JavaScript the page renders again with the
-  error's status. `TestFormAuthorization` (`main_test.go`) runs these
-  cases with livetest, after logout too.
+  error's status.
 - **CSRF.** The forms and the login forms have no CSRF token. The whole
   app is wrapped in the standard library's `http.CrossOriginProtection`,
   which refuses cross-origin POSTs (including to `/live/commands`).
@@ -52,8 +51,9 @@ its logins in a store.
   resync and reloads into the login redirect; another user's pages go on.
 - **Only a signed-in browser connects.** `live.WithAdmit(l.admits)`
   (`main.go`) checks every stream connect and reattach: the cookie must be
-  signed in as the page token's user. `TestSignOutEndsThatBrowsersPages`
-  and `TestAdmitsOnlyTheSignedInUser` cover both.
+  signed in as the page token's user. The login page boots without
+  `Live` (`liveFor` in `components/layout.templ`): it has no live state,
+  and the admission check would refuse its stream.
 
 ## Files
 
@@ -61,7 +61,6 @@ its logins in a store.
 |---|---|
 | `main.go` | the world, the form handlers, the routes, cross-origin protection |
 | `auth.go` | the demo users, the login table, `signedIn`, `formUser`, `requireAdmin`, `signOut` |
-| `main_test.go` | form authorization, sign-out and admission, with livetest |
 | `components/board.go` | `User`, the commands and their inputs |
 | `components/pages.templ` | the login page, the board, the activity log |
 | `components/layout.templ` | the document, the signed-in header with logout, `Head`, `Boot` |

@@ -98,7 +98,7 @@ func Layout(title string, u *User) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templatic.Boot(templatic.BootOptions{Live: liveFor(u), Assets: "/_templatic"}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -108,6 +108,13 @@ func Layout(title string, u *User) templ.Component {
 		}
 		return nil
 	})
+}
+
+func liveFor(u *User) string {
+	if u == nil {
+		return ""
+	}
+	return "/live"
 }
 
 var _ = templruntime.GeneratedTemplate

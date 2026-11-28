@@ -44,10 +44,6 @@ go run .                     # http://localhost:8080
   the last change are world `live.Cell`s shown with `ui.Cell`, as in
   [02-live-value](../02-live-value). Rows changed by the latest update are
   highlighted.
-- **Tests through livetest.** `main_test.go` checks `ParseView` and its
-  round trip through `View.URL`, and that an update refreshes two sessions,
-  one moved by `Navigate` and one connected at a deep link, each with its
-  own view.
 
 The query is parsed by hand: there is no typed query decoding yet
 ([#5](https://github.com/nkapatos/templatic/issues/5)).
@@ -58,7 +54,6 @@ The query is parsed by hand: there is no typed query decoding yet
 |---|---|
 | `main.go` | the world, `Navigate`, the update loop and `Refresh`, the routes |
 | `store.go` | the generated orders, the changes, search, sort and paging |
-| `main_test.go` | the view parsing and per-session refresh tests |
 | `components/orders.go` | `Order`, `View` and its parsing, `Result`, `Navigate` |
 | `components/orders.templ` | the page with the search form, the `Table` region |
 | `components/layout.templ` | the document, `Head`, `Boot` |

@@ -34,8 +34,7 @@ turn JavaScript off and like it again.
 - **The id comes from the path.** `Show` reads `r.PathValue("id")`.
   `Like.Form` decodes the form and lets route wildcards win over form
   fields, so a POST to `/items/1/like` likes item 1 whatever its `id`
-  field says, with and without JavaScript. `TestLikeFormUsesThePathID` in `main_test.go`
-  posts a forged `id` through `routes`.
+  field says, with and without JavaScript.
 - **One cell per item.** `live.NewCellFamily(w, "likes", 0)` declares a
   cell for each item on first use; `ui.Cell(likes.Get(id))` renders it on
   the list and on the item page, and both follow every like.
@@ -47,7 +46,6 @@ turn JavaScript off and like it again.
 | File | Holds |
 |---|---|
 | `main.go` | the world, the manifest and `routes`: the ServeMux wiring |
-| `main_test.go` | the path id beats a forged field; unknown items are 404 |
 | `internal/items/feature.go` | `Like`, `LikeIn`, `Register` and the handlers it returns |
 | `internal/items/model.go` | the fixed catalog and `find` |
 | `internal/items/pages.templ` | the list and the item page |

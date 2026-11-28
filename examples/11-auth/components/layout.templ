@@ -26,7 +26,15 @@ templ Layout(title string, u *User) {
 			<main>
 				{ children... }
 			</main>
-			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+			// Signed out there is no live state, and WithAdmit would refuse the stream.
+			@templatic.Boot(templatic.BootOptions{Live: liveFor(u), Assets: "/_templatic"})
 		</body>
 	</html>
+}
+
+func liveFor(u *User) string {
+	if u == nil {
+		return ""
+	}
+	return "/live"
 }

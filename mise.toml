@@ -131,6 +131,25 @@ status=$(git status --porcelain --untracked-files=normal -- examples)
 if [ -n "$status" ]; then echo "examples: generated files differ from the committed ones (run go tool templatic generate in each):" >&2; echo "$status" >&2; git diff --stat -- examples >&2; exit 1; fi
 """
 
+[tasks.examples-browser]
+description = "Every example in Chromium, with and without JavaScript (examples/browser); generates each example first"
+dir = "{{config_root}}"
+run = """#!/usr/bin/env bash
+set -euo pipefail
+for d in examples/*/; do
+  [ -f "$d/go.mod" ] || continue
+  (
+    cd "$d"
+    npm ci --no-audit --no-fund --loglevel=error
+    if grep -q '"generate":' package.json; then npm run --silent generate >/dev/null; else go tool templatic generate >/dev/null; fi
+  )
+done
+cd examples/browser
+npm ci --no-audit --no-fund --loglevel=error
+npx playwright install chromium >/dev/null
+node run.cjs "$@"
+"""
+
 [tasks.examples-version]
 description = "Set every example's templatic require to a version (the release PR, before tagging)"
 dir = "{{config_root}}"

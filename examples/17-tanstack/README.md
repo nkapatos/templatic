@@ -77,10 +77,6 @@ the other. Then turn JavaScript off and sign up again.
   every change is pushed. A query cache beside them would be a second source of
   truth for the same dataset, and keeping the two in step is the bug to
   avoid.
-- **The server side is tested without a browser.** `main_test.go` checks
-  that the log keeps 10,000 rows newest first, that a new row and an order
-  change each reach a page as one op, and both refusals of `Register`
-  through `livetest`.
 
 ## What a change costs
 
@@ -156,7 +152,6 @@ is the island's own code.
 | `logfeed.go` | the log collection, the rate cell, `SetRate` and the goroutine that adds rows |
 | `orders.go` | the generated orders and the goroutine that changes them |
 | `signup.go` | the taken names and `Register`'s handler |
-| `main_test.go` | the log, the orders and `Register` tested with `livetest` |
 | `components/log.go`, `orders.go`, `signup.go` | props, inputs, `Validate` and the commands |
 | `components/log.templ`, `orders.templ`, `signup.templ` | the island pragmas, their fallbacks and the pages |
 | `components/layout.templ` | the document, `Head`, `Boot` |
