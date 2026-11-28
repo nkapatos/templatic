@@ -35,9 +35,9 @@ Open it in two windows and press a button in one.
   ([#10](https://github.com/nkapatos/templatic/issues/10)).
 - **The whole series is one value.** Values are latest-wins and published
   whole ([design.md](../../design.md#the-live-channel)), so each second
-  the full series of up to 60 numbers goes to every page. That is fine
-  for a short window; a dataset that grows without bound is a keyed list,
-  not a value.
+  the full series of up to 60 numbers goes to every page with the chart;
+  `/about` has none and receives none of it. That is fine for a short
+  window; a dataset that grows without bound is a keyed list, not a value.
 - **The props type comes from Go.** `ChartProps` in
   `components/traffic.go` becomes `.templatic/islands/traffic-chart.types.ts`,
   imported as `templatic/islands/traffic-chart.types` in

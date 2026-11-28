@@ -15,8 +15,8 @@ Open it in two windows and press a button in one.
 ## What it shows
 
 - **A world cell is shared state.** `live.NewCell(w, "tank.level", 50)` in
-  `tank.go` declares one value for the whole world: every session
-  subscribes to it, whoever it belongs to.
+  `tank.go` declares one value for the whole world: every page that shows
+  it gets its changes, whoever the page belongs to.
 - **`ui.Cell` renders it and keeps it live.** `components/home.templ`
   renders the current value on the server; the runtime replaces the text
   when the cell changes.

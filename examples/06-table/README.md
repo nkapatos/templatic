@@ -27,7 +27,8 @@ go run .                     # http://localhost:8080
   page. An unknown `sort` or `dir` falls back to the default.
 - **Refresh every session with its own view.**
   `TableRegion.Refresh(w, model)` (`main.go`, `table.update`) renders the
-  region once per connected session from what `model(s)` returns. The
+  region once per connected session whose page shows it, from what
+  `model(s)` returns. The
   view each session shows is kept in a server-only session value,
   `viewOf` (`live.DeclareSessionValue`): `World.OnConnect` seeds it from
   `Session.URL()` (the address the page was loaded at) and `navigate`
