@@ -2,7 +2,8 @@
 
 The templ components and attribute builders that bind server-rendered markup
 to a `live.World`. They emit `data-tc-*` markers that the client runtime
-(started by `templatic.Boot`) reads to update elements and raise commands.
+(started by `templatic.Boot`) reads to update elements, raise commands and
+post forms.
 
 API documentation: https://pkg.go.dev/github.com/nkapatos/templatic/ui
 

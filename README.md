@@ -27,15 +27,15 @@ The browser gets a small runtime that does three things:
 1. **Listens.** Each open page keeps a connection to the server. When a value
    changes there, the server sends the new value or the new piece of HTML,
    and the page updates that spot in place.
-2. **Sends.** When someone clicks a button or submits a form, the runtime
-   sends the action to the server as a *command*. The server checks it,
-   changes its state, and every page showing that state updates.
+2. **Sends.** When someone clicks a button, the runtime sends the action to
+   the server as a *command*; a form posts to its own URL. The server checks
+   it, changes its state, and every page showing that state updates.
 3. **Wakes up islands.** A part of the page that really needs code in the
    browser (a chart, a drag-and-drop list, a rich editor) can be an *island*:
    a small client component, loaded only where it is used.
 
-Forms keep working without JavaScript: the same command also accepts an
-ordinary form post, so a page falls back to plain HTML instead of breaking.
+Forms keep working without JavaScript: the browser posts the same form to
+the same URL, so a page falls back to plain HTML instead of breaking.
 
 ## How it works
 

@@ -119,8 +119,8 @@ func PostTo(action string) Option {
 	return func(c *elemConfig) { c.postTo = action }
 }
 
-// Button renders a trigger button that raises cmd with in; with PostTo it is a one-button form that also works
-// without JavaScript. It panics when PostTo is given and In has a field no form can fill.
+// Button renders a trigger button that raises cmd with in; with PostTo it is a one-button form that POSTs in to
+// the action URL, with and without JavaScript. It panics when PostTo is given and In has a field no form can fill.
 func Button[In any](cmd *live.Command[In], in In, opts ...Option) templ.Component {
 	cfg := buildConfig(opts)
 	if cfg.postTo == "" {

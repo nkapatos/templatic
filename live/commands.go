@@ -4,7 +4,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"net/http"
-	"net/url"
 )
 
 // CommandHandler runs an action raised from the page; a non-nil result is sent to
@@ -46,14 +45,6 @@ func (h *commandsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	args := jsonArgs(req.Args)
-	if req.Form != nil {
-		vals, err := url.ParseQuery(*req.Form)
-		if err != nil || len(req.Args) != 0 {
-			http.Error(w, "live: bad command payload", http.StatusBadRequest)
-			return
-		}
-		args = formArgs(vals)
-	}
 
 	h.world.mu.RLock()
 	s, sessionOK := h.world.sessions[req.SID]

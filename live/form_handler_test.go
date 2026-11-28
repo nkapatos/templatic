@@ -113,7 +113,7 @@ func TestARuntimeKeyMakesASwappedFormRunOnce(t *testing.T) {
 	}
 	// the same key on the command bus, as an island's send({once}) sends it
 	for range 2 {
-		postForm(t, ts, "s1", "note.add", "c.island-signup-0001", url.Values{"title": {"a"}})
+		postSubmit(t, ts, "s1", "note.add", "c.island-signup-0001", "a")
 	}
 	if runs.Load() != 2 {
 		t.Fatalf("a repeated send key ran %d times in all, want 2", runs.Load())

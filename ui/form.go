@@ -19,8 +19,8 @@ import (
 	"github.com/nkapatos/templatic/live"
 )
 
-// Form renders a form that raises the command name on submit; without
-// JavaScript the browser POSTs to action.
+// Form renders a form that POSTs to action, with JavaScript through the
+// runtime and without it natively; name labels the command for the runtime.
 //
 // Deprecated: use FormFor.
 func Form(name string, action string, opts ...FormOption) templ.Component {

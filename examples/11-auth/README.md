@@ -25,26 +25,22 @@ its logins in a store.
 - **The page token carries the user.** The board page calls
   `templatic.SeedPage(r, live.TokenParam("user", name))` before it
   renders (`main.go`). The token is signed, so `s.Params()["user"]` in a
-  command handler is the user the server rendered the page for. `s.URL()`
+  form handler is the user the server rendered the page for. `s.URL()`
   is reported by the client and is never used for identity.
-- **Commands authorize on their own request.** `live.WithRequestCookies("auth")`
-  allowlists the cookie, and `commandUser` (`auth.go`) reads it from
-  `s.CommandRequest()`: the command runs only while that cookie is signed
-  in as the page's user. A command raised with someone else's session id
-  or after logout answers 401; `requireAdmin` answers 403 to a viewer.
-  `TestCommandAuthorization` (`main_test.go`) runs these cases with
-  livetest: `livetest.Param` gives a page its token's user and
-  `livetest.Request` its login cookie.
+- **The stream keeps the login cookie.** `live.WithRequestCookies("auth")`
+  allowlists it, so `s.Request()` carries it; `signOut` (`auth.go`) finds
+  a browser's pages by it.
 - **The UI follows the role, the server enforces it.** `Board` renders the
   notice form only for admins (`components/pages.templ`); a viewer who
-  raises `notice.post` by hand still gets 403.
+  posts to `/notice` by hand still gets 403.
 - **One handler per form, with and without JavaScript.** The forms POST
   to `/notice` and `/wave` either way, so these routes sit behind
   `signedIn` and the user is the cookie's. With JavaScript the page's live
   session comes too, and `formUser` (`auth.go`) refuses with 401 when that
   page belongs to another user. A refusal's message shows in the form's
   `ui.FormError`; without JavaScript the page renders again with the
-  error's status.
+  error's status. `TestFormAuthorization` (`main_test.go`) runs these
+  cases with livetest, after logout too.
 - **CSRF.** The forms and the login forms have no CSRF token. The whole
   app is wrapped in the standard library's `http.CrossOriginProtection`,
   which refuses cross-origin POSTs (including to `/live/commands`).
@@ -59,17 +55,13 @@ its logins in a store.
   signed in as the page token's user. `TestSignOutEndsThatBrowsersPages`
   and `TestAdmitsOnlyTheSignedInUser` cover both.
 
-A refused command shows nothing in the form with JavaScript; the
-runtime only logs a warning
-([#31](https://github.com/nkapatos/templatic/issues/31)).
-
 ## Files
 
 | File | Holds |
 |---|---|
-| `main.go` | the world, the command handlers, the routes, cross-origin protection |
-| `auth.go` | the demo users, the login table, `signedIn`, `commandUser`, `requireAdmin` |
-| `main_test.go` | command authorization with livetest |
+| `main.go` | the world, the form handlers, the routes, cross-origin protection |
+| `auth.go` | the demo users, the login table, `signedIn`, `formUser`, `requireAdmin`, `signOut` |
+| `main_test.go` | form authorization, sign-out and admission, with livetest |
 | `components/board.go` | `User`, the commands and their inputs |
 | `components/pages.templ` | the login page, the board, the activity log |
 | `components/layout.templ` | the document, the signed-in header with logout, `Head`, `Boot` |

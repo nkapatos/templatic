@@ -1,9 +1,8 @@
 import { emit, isReady, onReady, readConfig, sessionID } from "./tc";
 
-/** Payload is what a command carries: JSON args, or a form's urlencoded fields. */
+/** Payload is what a command carries: its JSON args. */
 export interface Payload {
 	args?: unknown;
-	form?: string;
 }
 
 interface CommandBody extends Payload {
@@ -23,7 +22,6 @@ export interface ReplayPair {
 	tc: number;
 	action: string;
 	args?: unknown;
-	form?: string;
 }
 
 const HISTORY_VERSION = 1;
@@ -64,9 +62,8 @@ async function failure(action: string, res: Response): Promise<CommandError> {
 /** pairOf reads the replay pair off a history entry, or null when the entry is not ours. */
 export function pairOf(state: unknown): ReplayPair | null {
 	if (typeof state !== "object" || state === null) return null;
-	const candidate = state as { tc?: unknown; action?: unknown; form?: unknown };
+	const candidate = state as { tc?: unknown; action?: unknown };
 	if (candidate.tc !== HISTORY_VERSION || typeof candidate.action !== "string") return null;
-	if (candidate.form !== undefined && typeof candidate.form !== "string") return null;
 	return state as ReplayPair;
 }
 
@@ -130,11 +127,6 @@ export function abandonPending(): void {
 /** send raises a command once the session is ready and resolves with the handler's result (null if none). */
 export function send(action: string, args?: unknown, opts?: SendOptions): Promise<unknown> {
 	return raise(action, args === undefined ? {} : { args }, opts);
-}
-
-/** sendForm is send with form, the urlencoded body the browser would POST natively. */
-export function sendForm(action: string, form: string, opts?: SendOptions): Promise<unknown> {
-	return raise(action, { form }, opts);
 }
 
 function raise(action: string, payload: Payload, opts?: SendOptions): Promise<unknown> {

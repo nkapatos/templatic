@@ -112,7 +112,7 @@ const inflight = new WeakSet<object>();
 // brings a server id. Kept per form, so a retry of the same submission is recognized.
 const ids = new WeakMap<HTMLFormElement, string>();
 
-/** wireForms delegates submits of data-tc-form forms to commands. */
+/** wireForms posts data-tc-form forms to their action URL through postForm, or leaves the post native. */
 export function wireForms(): void {
 	document.addEventListener("submit", (ev) => {
 		if (ev.defaultPrevented) return;

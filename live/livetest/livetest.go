@@ -3,9 +3,10 @@
 // [New] connects a [Session] to a [live.World] without HTTP or a browser. The
 // session records every event the world sends it, and the helpers run
 // registered commands through their handlers and input decoding, skipping
-// the HTTP layer: [Call] and [Session.Do] with JSON-shaped input, [Submit] and
-// [Session.DoForm] with form fields. The test then reads what was pushed:
-// [Session.Swaps], [Session.LastSwap], [Session.Ops], [Session.Cell] and
+// the HTTP layer: [Call] and [Session.Do] with JSON-shaped input.
+// [Session.PostForm] sends a form's handler the POST the runtime makes, so a
+// [live.Command.Form] handler runs with this session. The test then reads
+// what was pushed: [Session.Swaps], [Session.LastSwap], [Session.Ops], [Session.Cell] and
 // [Session.Events]. [Session.WaitSwap] and [Session.WaitOp] poll for a swap or
 // a collection change that arrives asynchronously and fail the test on
 // timeout. A session receives a collection's changes once it shows it
@@ -127,7 +128,7 @@ func (s *Session) Do(action string, args any) (any, error) {
 		}
 		raw = b
 	}
-	res, err := livehook.Dispatch(s.Session, action, raw, nil, s.commandRequest())
+	res, err := livehook.Dispatch(s.Session, action, raw, s.commandRequest())
 	s.collect()
 	return res, err
 }
@@ -136,23 +137,6 @@ func (s *Session) Do(action string, args any) (any, error) {
 func Call[In any](s *Session, cmd *live.Command[In], in In) (any, error) {
 	s.t.Helper()
 	return s.Do(cmd.Name(), in)
-}
-
-// DoForm runs action as a form submit with these fields.
-func (s *Session) DoForm(action string, form url.Values) (any, error) {
-	s.t.Helper()
-	if form == nil {
-		form = url.Values{}
-	}
-	res, err := livehook.Dispatch(s.Session, action, nil, form, s.commandRequest())
-	s.collect()
-	return res, err
-}
-
-// Submit runs a declared command as a form submit with these fields.
-func Submit[In any](s *Session, cmd *live.Command[In], form url.Values) (any, error) {
-	s.t.Helper()
-	return s.DoForm(cmd.Name(), form)
 }
 
 // PostForm sends h the POST the runtime makes when the page submits a form to target with these fields, and
