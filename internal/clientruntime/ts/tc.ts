@@ -280,6 +280,7 @@ export interface TcEvents {
 	"swap:after": { topic: string; el: Element };
 	/** item fires per collection item changed; a reset fires once with the container as el and an empty key. */
 	item: { topic: string; key: string; el: Element; change: "insert" | "update" | "remove" | "reset" };
+	/** cell fires for the topics the page uses; on() does not make a topic used, cell(topic) does. */
 	cell: { topic: string; value: unknown };
 	"island:mount": { tag: string; host: Element };
 	"island:unmount": { tag: string; host: Element };
@@ -338,6 +339,7 @@ export interface Cell<T> {
 
 /** cell returns the client view of a cell topic. */
 export function cell<T = unknown>(topic: string): Cell<T> {
+	want(topic);
 	return {
 		get: () => lastCells.get(topic) as T | undefined,
 		subscribe(fn) {
@@ -354,6 +356,26 @@ export function cell<T = unknown>(topic: string): Cell<T> {
 			});
 		},
 	};
+}
+
+// Topics client code reads through cell(): the page uses them though its markup may not show them.
+const wanted = new Set<string>();
+let wantedListener: (topic: string) => void = () => {};
+
+function want(topic: string): void {
+	if (wanted.has(topic)) return;
+	wanted.add(topic);
+	wantedListener(topic);
+}
+
+/** wantedTopics returns the topics cell() was called for. */
+export function wantedTopics(): Iterable<string> {
+	return wanted;
+}
+
+/** onWanted registers what happens when cell() is first called for a topic. */
+export function onWanted(fn: (topic: string) => void): void {
+	wantedListener = fn;
 }
 
 type TopicBind = { tag: string; field: string };

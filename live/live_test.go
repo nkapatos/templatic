@@ -305,7 +305,18 @@ func TestTopicValidation(t *testing.T) {
 	_ = w
 }
 
+// serveWorld serves w with sessions that use every topic, as if each page showed them all; serveStrict does not.
 func serveWorld(t *testing.T, w *World) *httptest.Server {
+	t.Helper()
+	w.OnConnect(func(s *Session) {
+		s.topicsMu.Lock()
+		s.allTopics = true
+		s.topicsMu.Unlock()
+	})
+	return serveStrict(t, w)
+}
+
+func serveStrict(t *testing.T, w *World) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	w.Mount(mux, "/live")

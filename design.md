@@ -85,8 +85,8 @@ contracts apps rely on:
   one. Values are published whole; incremental changes to a dataset are a
   keyed list, not a value.
 - **Reach is explicit.** Session state reaches one session; world state
-  reaches every session. A page without the target in its markup ignores
-  the update.
+  reaches every session. Either reaches only a page that uses it: its markup
+  shows it, an island binds it or client code reads it.
 - **Islands are units.** A server fragment that contains an island never
   morphs into the island's live DOM; the island remounts.
 - **Forms degrade, and run once.** A command can also be served as a plain

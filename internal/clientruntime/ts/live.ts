@@ -3,6 +3,7 @@ import { Idiomorph } from "idiomorph";
 import { applyOps, applyReset, forget, subscribeShown, type GapHandler, type Op } from "./collections";
 import { applyDataOps, applyDataReset, deliverData } from "./data";
 import { catchUp } from "./subscribe";
+import { subscribeUsed } from "./uses";
 import { abandonPending } from "./commands";
 import { applyDev, type DevFrame } from "./dev";
 import { morphCallbacks, scanHooks } from "./hooks";
@@ -118,12 +119,18 @@ function flush(): void {
 					morph(topic, ev.html!);
 					break;
 				case "ops":
-					for (const c of applyOps(topic, ev.ver!, ev.ops!, gapHandler)) swappedCallback?.(c);
+					for (const c of applyOps(topic, ev.ver!, ev.ops!, gapHandler)) {
+						subscribeUsed(c);
+						swappedCallback?.(c);
+					}
 					applyDataOps(topic, ev.ver!, ev.ops!);
 					break;
 				case "reset":
 					if (typeof ev.html === "string") {
-						for (const c of applyReset(topic, ev.ver!, ev.html)) swappedCallback?.(c);
+						for (const c of applyReset(topic, ev.ver!, ev.html)) {
+							subscribeUsed(c);
+							swappedCallback?.(c);
+						}
 					} else {
 						applyDataReset(topic, ev.ver!, ev.items);
 					}
@@ -179,6 +186,7 @@ function morph(topic: string, html: string): void {
 	Idiomorph.morph(region, html, { morphStyle: "innerHTML", callbacks: morphCallbacks });
 	forget(region);
 	subscribeShown(region);
+	subscribeUsed(region);
 	scanHooks(region);
 	swappedCallback?.(region);
 	emit("swap:after", { topic, el: region });

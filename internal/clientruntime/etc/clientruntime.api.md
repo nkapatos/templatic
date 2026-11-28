@@ -144,7 +144,6 @@ export interface TcEvents {
         topic: string;
         el: Element;
     };
-    // (undocumented)
     cell: {
         topic: string;
         value: unknown;

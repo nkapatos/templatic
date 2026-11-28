@@ -27,19 +27,22 @@
 //
 // A [Cell] is a typed, versioned value shared by every session. [NewCell]
 // declares it; [Cell.Set] and [Cell.Update] store a new value and publish
-// it to every connected session. A [CellFamily] is a keyed set of such cells
+// it to the sessions whose page uses it. A [CellFamily] is a keyed set of such cells
 // under one topic prefix, for one cell per entity.
 //
-// A cell is published whole: each change sends the entire value to every
-// connected session, whether or not its page shows the cell, and every new
-// stream starts with every world cell. That suits small values, such as a
+// A page uses a cell or region when its markup shows it, one of its islands
+// binds it, or client code reads it with cell(); the page lists them when
+// its stream connects, and markup that arrives later adds its own. Nothing
+// else reaches the page. A cell is published whole: each change sends the
+// entire value to each page that uses it. That suits small values, such as a
 // count, a status or a short list. A dataset that changes item by item
 // belongs in a [Collection], whose changes cost the changed items and reach
 // only the pages that show it.
 //
 // A [Region] is a server-rendered fragment. [World.Region] declares it with a
 // render function, and [World.Redraw] re-renders it and pushes the markup to
-// all sessions. [World.Swap] pushes markup for a topic to one session.
+// the sessions whose page shows it. [World.Swap] pushes markup for a topic to
+// one session.
 //
 // A [Collection] is a keyed, ordered set of items the world holds.
 // [NewCollection] declares it with a key function;

@@ -121,9 +121,8 @@ Reading it:
   is one row, about 5,000 times smaller than the whole log was, and the
   stream at 20 adds/s is 3.7 KB/s where it was 15.9 MB/s.
 - **Pages without the list pay nothing.** `/signup` shows no log, so it
-  does not subscribe to `log.rows` and receives none of it; with the cell
-  it received every frame
-  ([#36](https://github.com/nkapatos/templatic/issues/36)).
+  does not subscribe to `log.rows` and receives none of it, as it would
+  receive none of a cell it does not show.
 - **The client time left is the list's own.** The island re-renders only
   the rows in view; the per-frame time is that render and the browser's
   layout of it, about 1 ms. Decoding an 834 KB frame is gone.

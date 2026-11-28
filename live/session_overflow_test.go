@@ -58,7 +58,7 @@ func TestOverflowSendsResyncDeterministically(t *testing.T) {
 	w := NewWorld()
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &connState{inbox: make(chan event, 1), cancel: cancel, done: make(chan struct{})}
-	s := &Session{sid: "overfull", world: w, conn: c}
+	s := &Session{sid: "overfull", world: w, conn: c, allTopics: true}
 	c.inbox <- event{kind: KindCell, topic: "tick", body: []byte(`{"v":1}`)}
 	s.offer(event{kind: KindCell, topic: "tick", body: []byte(`{"v":2}`)})
 	if !c.overflow.Load() {

@@ -75,7 +75,7 @@ describe("resume", () => {
 	test("the stream URL carries the collections the page shows, at the versions it holds", async () => {
 		document.body.insertAdjacentHTML("beforeend", `<ol data-tc-collection="feed" data-tc-ver="7"></ol><ol data-tc-collection="feed" data-tc-ver="5"></ol><ul data-tc-collection="fresh"></ul>`);
 		const first = connected();
-		expect(new URL(first.url, "http://x").searchParams.get("c")).toBe("drops.list:1,feed:5,fresh");
+		expect(new URL(first.url, "http://x").searchParams.get("c")).toBe("drops.list:1,feed:5,fresh,note.open,panel");
 		first.open();
 		first.frame({ kind: "ready" });
 		document.querySelector('[data-tc-collection="drops.list"]')!.setAttribute("data-tc-ver", "3");
@@ -298,5 +298,15 @@ describe("session end", () => {
 		window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
 		await vi.advanceTimersByTimeAsync(20000);
 		expect(FakeEventSource.instances).toHaveLength(n);
+	});
+});
+
+describe("topics the page uses", () => {
+	test("the stream URL lists the cells, attribute cells, regions, island binds and cell() reads of the page", () => {
+		document.body.insertAdjacentHTML("beforeend", `<a data-tc-a data-tc-a-class="theme"></a><x-chart data-tc-island="x-chart"></x-chart>`);
+		tc.registerBinds({ version: 2, modules: {}, binds: { "x-chart": [{ topic: "traffic.series", field: "points" }] } } as never);
+		tc.cell("clock");
+		const c = new URL(connected().url, "http://x").searchParams.get("c")!.split(",");
+		for (const topic of ["note.open", "panel", "theme", "traffic.series", "clock"]) expect(c).toContain(topic);
 	});
 });

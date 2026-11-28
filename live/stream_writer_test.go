@@ -22,6 +22,11 @@ func (p plainWriter) WriteHeader(code int)        { p.w.WriteHeader(code) }
 
 func serveWrapped(t *testing.T, w *World, wrap func(http.ResponseWriter) http.ResponseWriter) *httptest.Server {
 	t.Helper()
+	w.OnConnect(func(s *Session) {
+		s.topicsMu.Lock()
+		s.allTopics = true
+		s.topicsMu.Unlock()
+	})
 	mux := http.NewServeMux()
 	w.Mount(mux, "/live")
 	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {

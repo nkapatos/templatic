@@ -182,7 +182,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// Fresh or not, the page says which collections it shows and at what version, so a gap since its render is
 	// caught up too. A collection that cannot be rendered is skipped: a broken frame would not be repaired.
-	_ = s.subscribe(parseHeld(q.Get("c")))
+	_ = s.subscribe(parseHeld(q.Get("c")), false)
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")

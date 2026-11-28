@@ -156,7 +156,7 @@ func (w *World) Region(topic string, render func() templ.Component) *Region {
 	return r
 }
 
-// Redraw re-renders the named region and pushes the markup to all sessions.
+// Redraw re-renders the named region and pushes the markup to the sessions whose page shows it.
 func (w *World) Redraw(topic string) error {
 	w.mu.RLock()
 	r, ok := w.regions[topic]
