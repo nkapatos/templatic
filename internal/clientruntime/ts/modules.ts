@@ -33,11 +33,12 @@ export function loadEntry(name: string): Promise<void> {
 	let p = loaded.get(name);
 	if (p) return p;
 	const url = entries.get(name);
+	// a CSS-only entry has no file, only its stylesheets
+	linkCSS(name);
 	if (!url) {
 		p = Promise.resolve();
-		if (name !== "app") console.warn(`tc: module ${name} missing from the manifest`);
+		if (name !== "app" && !entryCSS.has(name)) console.warn(`tc: module ${name} missing from the manifest`);
 	} else {
-		linkCSS(name);
 		p = import(url).then(() => undefined);
 	}
 	loaded.set(name, p);

@@ -84,3 +84,20 @@ func TestClientModulesUnderAGlobLikeRoot(t *testing.T) {
 		t.Fatalf("modules/charts missing from entries: %v", e)
 	}
 }
+
+func TestACSSOnlyAppEntryHasNoFile(t *testing.T) {
+	opts := testAppOpts(t)
+	client := filepath.Join(opts.Root, "client")
+	for name, body := range map[string]string{"app.ts": "import './app.css';\n", "app.css": ".app{color:red}\n"} {
+		if err := os.WriteFile(filepath.Join(client, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := Run(opts); err != nil {
+		t.Fatal(err)
+	}
+	app := entriesOf(t, opts.Root)["app"]
+	if app.File != "" || len(app.CSS) != 1 {
+		t.Fatalf("modules[app] = %+v, want only its stylesheet", app)
+	}
+}

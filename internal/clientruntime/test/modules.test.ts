@@ -82,3 +82,12 @@ test("modules: a failing module is contained and recorded", async () => {
 	expect(tc.tcState().phases.modules).toBe("failed");
 	expect(tc.tcState().lastErrors.modules ?? "").toContain("mod boom");
 });
+
+test("modules: a CSS-only entry links its stylesheet, loads no file and warns nothing", async () => {
+	const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+	document.head.innerHTML = "";
+	modules.registerEntries({ version: 2, modules: { "modules/theme": { css: ["modules/theme-1.css"] } } }, "http://x/_templatic/tc.json");
+	await modules.loadEntry("modules/theme");
+	expect([...document.querySelectorAll('link[rel="stylesheet"]')].map((l) => (l as HTMLLinkElement).href)).toEqual(["http://x/_templatic/modules/theme-1.css"]);
+	expect(warn).not.toHaveBeenCalled();
+});

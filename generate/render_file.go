@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/a-h/templ/generator"
 	parser "github.com/a-h/templ/parser/v2"
 )
 
-func renderFile(opts Options, rel string, s *Summary, pending *[]unresolvedQuals) ([]Island, error) {
+// tags holds the islands of the files rendered before, by tag, so a tag declared twice fails before this file
+// writes anything.
+func renderFile(opts Options, rel string, s *Summary, pending *[]unresolvedQuals, tags map[string]Island) ([]Island, error) {
 	abs := filepath.Join(opts.Root, filepath.FromSlash(rel))
 	tf, err := parser.Parse(abs)
 	if err != nil {
@@ -21,6 +25,13 @@ func renderFile(opts Options, rel string, s *Summary, pending *[]unresolvedQuals
 	specs, err := scanIslands(rel, tf)
 	if err != nil {
 		return nil, err
+	}
+	for _, i := range slices.Sorted(maps.Keys(specs)) {
+		spec := specs[i]
+		if prev, dup := tags[spec.Tag]; dup {
+			return nil, fmt.Errorf("island tag %q is declared twice: %s (%s) and %s (%s)", spec.Tag, prev.File, prev.Component, spec.File, spec.Component)
+		}
+		tags[spec.Tag] = spec
 	}
 	regions, err := scanRegions(rel, tf, specs)
 	if err != nil {
