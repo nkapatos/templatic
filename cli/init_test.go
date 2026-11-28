@@ -142,7 +142,7 @@ func TestInitSmoke(t *testing.T) {
 		SID string `json:"s"`
 	}
 	_ = json.Unmarshal(raw, &claims)
-	stream, err := http.Get(base + "/live/stream?t=" + url.QueryEscape(tok[1]))
+	stream, err := http.Get(base + "/live/stream?c=count&t=" + url.QueryEscape(tok[1])) // the page shows the count cell
 	if err != nil || stream.StatusCode != 200 {
 		t.Fatalf("stream: %v %v", stream, err)
 	}
