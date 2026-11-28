@@ -35,7 +35,6 @@ type Session struct {
 	replacing *connState
 	cache     map[string]event
 	stale     bool // cache overflowed: reattach must resync
-	swapSeq   uint64
 	timer     *time.Timer
 	timerGen  uint64
 	connected bool
@@ -55,6 +54,7 @@ type Session struct {
 // Each connection has its own inbox and overflow flag so a retired one's leftovers are not mistaken for the live one's.
 type connState struct {
 	inbox    chan event
+	pending  map[string]event // latest cell or swap per topic, slotted once in inbox; guarded by Session.mu
 	overflow atomic.Bool
 	cancel   context.CancelFunc
 	done     chan struct{}
@@ -104,10 +104,6 @@ func (s *Session) offer(ev event) {
 	if s.retired {
 		return
 	}
-	if ev.kind == KindSwap {
-		s.swapSeq++
-		ev.version = s.swapSeq
-	}
 	c := s.conn
 	if c == nil {
 		if ev.kind == KindSwap {
@@ -115,12 +111,68 @@ func (s *Session) offer(ev event) {
 		}
 		return
 	}
+	// Latest-wins kinds take one inbox slot per topic, so a write stall fills it with topics, not with writes.
+	if latestWins(ev.kind) {
+		key := latestKey(ev)
+		if p, ok := c.pending[key]; ok {
+			if ev.version >= p.version {
+				c.pending[key] = ev
+			}
+			return
+		}
+		if c.pending == nil {
+			c.pending = map[string]event{}
+		}
+		c.pending[key] = ev
+	}
 	select {
 	case c.inbox <- ev:
 	default:
 		c.overflow.Store(true)
 		c.cancel()
 	}
+}
+
+func latestWins(kind string) bool { return kind == KindCell || kind == KindSwap }
+
+func latestKey(ev event) string { return ev.topic + "\x00" + ev.kind }
+
+// takeLocked swaps an inbox slot for the latest event of its topic.
+func (c *connState) takeLocked(ev event) event {
+	if !latestWins(ev.kind) {
+		return ev
+	}
+	key := latestKey(ev)
+	if p, ok := c.pending[key]; ok {
+		delete(c.pending, key)
+		return p
+	}
+	return ev
+}
+
+func (s *Session) take(c *connState, ev event) event {
+	if !latestWins(ev.kind) {
+		return ev
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return c.takeLocked(ev)
+}
+
+// latestFilter tracks what one connection has sent: publishes can reach the inbox out of order, so per topic a
+// cell or swap older than the last one sent is dropped.
+type latestFilter map[string]uint64
+
+func (f latestFilter) newer(ev event) bool {
+	if !latestWins(ev.kind) {
+		return true
+	}
+	key := latestKey(ev)
+	if last, ok := f[key]; ok && ev.version <= last {
+		return false
+	}
+	f[key] = ev.version
+	return true
 }
 
 func (s *Session) stashLocked(ev event) {
@@ -198,7 +250,7 @@ func (s *Session) drainLocked(c *connState) {
 	for {
 		select {
 		case ev := <-c.inbox:
-			if ev.kind == KindSwap {
+			if ev = c.takeLocked(ev); ev.kind == KindSwap {
 				s.stashLocked(ev)
 			}
 		default:
@@ -331,9 +383,14 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 		return err
 	}
 
+	newer := latestFilter{}.newer
+
 	initial := append(s.world.snapshot(), s.snapshot()...)
 	initial = append(initial, prelude...)
 	for i, ev := range initial {
+		if !newer(ev) {
+			continue
+		}
 		if err := frame(ev.kind, ev.topic, ev.body); err != nil {
 			s.requeue(c, initial[i:])
 			return err
@@ -358,13 +415,13 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 			}
 		case ev := <-c.inbox:
 			out := coalescer{}
-			out.add(ev)
+			out.add(s.take(c, ev))
 			timer := time.NewTimer(s.world.coalesceWindowOf())
 		drain:
 			for {
 				select {
 				case more := <-c.inbox:
-					out.add(more)
+					out.add(s.take(c, more))
 					if out.n >= inboxSize {
 						break drain
 					}
@@ -389,6 +446,9 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 			}
 			batch := out.events()
 			for i, fev := range batch {
+				if !newer(fev) {
+					continue
+				}
 				if err := frame(fev.kind, fev.topic, fev.body); err != nil {
 					s.requeue(c, batch[i:])
 					return err

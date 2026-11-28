@@ -36,6 +36,7 @@ func init() {
 		for _, fn := range onConnect {
 			fn(s)
 		}
+		sent := latestFilter{} // as the stream writer filters
 		current := func() *connState {
 			mu.Lock()
 			defer mu.Unlock()
@@ -44,11 +45,14 @@ func init() {
 		return livehook.Conn{
 			Session: s,
 			Drain: func() []livehook.Event {
-				inbox := current().inbox
+				conn := current()
 				var out []livehook.Event
 				for {
 					select {
-					case ev := <-inbox:
+					case ev := <-conn.inbox:
+						if ev = s.take(conn, ev); !sent.newer(ev) {
+							continue
+						}
 						out = append(out, livehook.Event{Kind: ev.kind, Topic: ev.topic, Body: ev.body})
 					default:
 						return out
@@ -113,7 +117,7 @@ func init() {
 		if !ok {
 			return nil, false
 		}
-		body := c.snapshot()
+		body, _ := c.snapshot()
 		return body, body != nil
 	}
 }

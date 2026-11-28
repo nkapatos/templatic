@@ -107,8 +107,9 @@ Reading it:
   formatting frame headers, 9% setting the write deadline per frame, 8%
   in the coalescer, 6% handing changes to the sessions.
 - **Memory grows by about 150 KB of RSS per open stream**; about 65 KB of
-  it is the stream's 1024-event buffer. A viewer that falls 1024 events
-  behind is sent a resync and reloads; none did in these runs.
+  it is the stream's 1024-event buffer. A cell takes one slot however often
+  it changes, so a slow viewer of these 100 symbols never fills it; one
+  that fills it is sent a resync and reloads.
 - **A publish is cheap to fan out**: one `Set` hands the change to every
   session in turn, about 60ns each in the profile, on the goroutine that
   called `Set`.
@@ -116,10 +117,9 @@ Reading it:
   2000 changes a second spent about a quarter of its main thread on
   script, with no long tasks and steady 60fps frames.
 
-Racing writers to one cell can leave a viewer on an older value
-([#13](https://github.com/nkapatos/templatic/issues/13)). Here one goroutine
-writes every cell, so publishes to a topic never race; the load program
-checks that `AsOf` never goes backwards on any stream.
+A viewer never receives a value older than one it has, even from racing
+writers; the load program checks that `AsOf` never goes backwards on any
+stream.
 
 ## Files
 

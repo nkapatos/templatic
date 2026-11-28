@@ -143,7 +143,9 @@
 // KindReset, KindReady, KindResync and KindDev. Cell events carry a value and
 // swap events markup; ops and reset events carry a collection's changes or
 // its whole set at a version, as markup or as JSON items. Bursts of publishes are coalesced into one
-// flush. A session that loses its connection keeps its place for the resume
+// flush. Cells and swaps are latest-wins per topic: a page never receives
+// one older than the last it got (a swap's age is when its state was read),
+// and a slow page holds one pending value per topic, not one per write. A session that loses its connection keeps its place for the resume
 // grace; a client that reconnects too late, whose session the server no
 // longer holds, or that cannot keep up receives a resync event instead of
 // incremental updates. [World.Dev] sends a development

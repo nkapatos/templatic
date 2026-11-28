@@ -50,9 +50,7 @@ go run .                     # http://localhost:8080
   own view.
 
 The query is parsed by hand: there is no typed query decoding yet
-([#5](https://github.com/nkapatos/templatic/issues/5)). An update that
-lands while a viewer navigates can redraw that viewer's table at the old
-view ([#13](https://github.com/nkapatos/templatic/issues/13)); fast
+([#5](https://github.com/nkapatos/templatic/issues/5)). Fast
 clicks can leave the address and the table out of step, as in 04
 ([#34](https://github.com/nkapatos/templatic/issues/34)).
 
