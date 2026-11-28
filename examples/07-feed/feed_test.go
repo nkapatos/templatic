@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json/v2"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -26,8 +29,8 @@ func TestPostReachesPagesShowingTheRoom(t *testing.T) {
 	f := newFeed(w)
 	general, random := shown(t, w, f, "general"), shown(t, w, f, "random")
 
-	if _, err := livetest.Call(general, components.Post, components.PostIn{Room: "general", Name: "ada", Text: "hello"}); err != nil {
-		t.Fatal(err)
+	if rec := general.PostForm(newMux(w, f), "/rooms/general/messages", url.Values{"name": {"ada"}, "text": {"hello"}}); rec.Code != http.StatusNoContent {
+		t.Fatalf("post: %d %s", rec.Code, rec.Body)
 	}
 	ops := general.Ops("chat.general")
 	if len(ops) != 1 || ops[0].Kind != "u" || !strings.Contains(ops[0].HTML, `<li data-tc-item="m`) || !strings.Contains(ops[0].HTML, "hello") {
@@ -49,13 +52,17 @@ func TestLikeUpdatesAndDeleteRemoves(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := f.room("general").Items()[0].Key()
+	mux := newMux(w, f)
+	act := func(what string) int {
+		return s.PostForm(mux, "/rooms/general/messages/"+key+"/"+what, nil).Code
+	}
 	for range 2 {
-		if _, err := livetest.Call(s, components.Like, components.MessageIn{Room: "general", ID: key}); err != nil {
-			t.Fatal(err)
+		if code := act("like"); code != http.StatusNoContent {
+			t.Fatalf("like: %d", code)
 		}
 	}
-	if _, err := livetest.Call(s, components.Delete, components.MessageIn{Room: "general", ID: key}); err != nil {
-		t.Fatal(err)
+	if code := act("delete"); code != http.StatusNoContent {
+		t.Fatalf("delete: %d", code)
 	}
 	var kinds []string
 	for _, op := range s.Ops("chat.general") {
@@ -68,23 +75,28 @@ func TestLikeUpdatesAndDeleteRemoves(t *testing.T) {
 	if ops := s.Ops("chat.general"); !strings.Contains(ops[2].HTML, "♥ 2") {
 		t.Fatalf("second like renders %q", ops[2].HTML)
 	}
-	if _, err := livetest.Call(s, components.Like, components.MessageIn{Room: "general", ID: key}); err == nil {
-		t.Fatal("liking a deleted message must be refused")
+	if code := act("like"); code < 400 {
+		t.Fatalf("liking a deleted message must be refused: %d", code)
 	}
 }
 
 func TestPostRefusesAnUnknownRoomAndEmptyText(t *testing.T) {
 	w := live.NewWorld()
-	newFeed(w)
+	f := newFeed(w)
 	s := livetest.New(t, w)
 
-	_, err := livetest.Call(s, components.Post, components.PostIn{Room: "attic", Name: "ada"})
-	got := map[string]bool{}
-	for _, ie := range live.InputErrors(err) {
-		got[ie.Field] = true
+	rec := s.PostForm(newMux(w, f), "/rooms/attic/messages", url.Values{"name": {"ada"}})
+	var env struct {
+		Error struct {
+			Message string            `json:"message"`
+			Fields  map[string]string `json:"fields"`
+		} `json:"error"`
 	}
-	if !got[""] || !got["text"] || len(got) != 2 {
-		t.Fatalf("errors on %v, want the room (no field) and text", got)
+	if rec.Code != http.StatusBadRequest || json.Unmarshal(rec.Body.Bytes(), &env) != nil {
+		t.Fatalf("status %d %s", rec.Code, rec.Body)
+	}
+	if env.Error.Message == "" || env.Error.Fields["text"] == "" || len(env.Error.Fields) != 1 {
+		t.Fatalf("errors %+v, want the room (no field) and text", env.Error)
 	}
 }
 

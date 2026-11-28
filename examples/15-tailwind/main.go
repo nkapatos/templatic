@@ -40,11 +40,6 @@ func main() {
 			log.Printf("tailwind: redraw: %v", err)
 		}
 	}
-	components.Add.Handle(w, func(_ *live.Session, in components.AddIn) (any, error) {
-		add(in.N)
-		return nil, nil
-	})
-
 	manifests, err := templatic.ManifestFor(os.Getenv("TC_MODE"), distDir)
 	if err != nil {
 		log.Fatalf("tailwind: %v (run `npm run generate` first)", err)
@@ -53,8 +48,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /{$}", templ.Handler(components.Home(count, level, nil)))
-	mux.Handle("POST /add", components.Add.FormPOST(w,
-		func(_ *http.Request, in components.AddIn) (string, error) {
+	mux.Handle("POST /add", components.Add.Form(w,
+		func(_ *http.Request, _ *live.Session, in components.AddIn) (string, error) {
 			add(in.N)
 			return "/", nil
 		},

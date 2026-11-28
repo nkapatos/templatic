@@ -29,8 +29,7 @@ func (m Message) Key() string { return "m" + strconv.Itoa(m.ID) }
 
 // PostIn is Post's input, from either transport.
 type PostIn struct {
-	// Room is the {room} route wildcard on the no-JS path, the form's
-	// hidden field with JavaScript.
+	// Room is the {room} route wildcard.
 	Room string `json:"room"`
 	Name string `json:"name"`
 	Text string `json:"text"`

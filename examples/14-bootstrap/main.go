@@ -37,13 +37,6 @@ func main() {
 	b := newBoard(w)
 	go b.measure(5 * time.Second)
 
-	components.Set.Handle(w, func(_ *live.Session, in components.SetIn) (any, error) {
-		return nil, b.set(in)
-	})
-	components.Report.Handle(w, func(_ *live.Session, in components.ReportIn) (any, error) {
-		return nil, b.report(in)
-	})
-
 	// The generated manifest. TC_MODE=dev follows `templatic dev`
 	// rebuilds and reloads open pages; otherwise it is read once.
 	manifests, err := templatic.ManifestFor(os.Getenv("TC_MODE"), distDir)
@@ -67,11 +60,11 @@ func main() {
 	// Without JS the forms POST here and the browser follows the redirect
 	// back to the board. The status buttons cannot send invalid input, so
 	// a refusal there is a plain 400.
-	mux.Handle("POST /set", components.Set.FormPOST(w,
-		func(_ *http.Request, in components.SetIn) (string, error) { return "/", b.set(in) },
+	mux.Handle("POST /set", components.Set.Form(w,
+		func(_ *http.Request, _ *live.Session, in components.SetIn) (string, error) { return "/", b.set(in) },
 		nil))
-	mux.Handle("POST /report", components.Report.FormPOST(w,
-		func(_ *http.Request, in components.ReportIn) (string, error) { return "/", b.report(in) },
+	mux.Handle("POST /report", components.Report.Form(w,
+		func(_ *http.Request, _ *live.Session, in components.ReportIn) (string, error) { return "/", b.report(in) },
 		func(rw http.ResponseWriter, r *http.Request, err error) {
 			report(rw, r, ui.Failed(r, err), http.StatusUnprocessableEntity)
 		}))

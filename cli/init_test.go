@@ -175,26 +175,29 @@ func TestInitSmoke(t *testing.T) {
 		}
 	}
 	waitFrame(`"kind":"ready"`)
-	command := func(payload map[string]any) *http.Response {
-		payload["sid"], payload["action"] = claims.SID, "count.add"
-		body, _ := json.Marshal(payload)
-		res, err := http.Post(base+"/live/commands", "application/json", bytes.NewReader(body))
+	// the runtime's form POST: the form's own URL, marked, with the session
+	jsPost := func(n string) *http.Response {
+		req, _ := http.NewRequest("POST", base+"/add", strings.NewReader(url.Values{"n": {n}}.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("X-TC-Form", "1")
+		req.Header.Set("X-TC-Sid", claims.SID)
+		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)
 		}
 		res.Body.Close()
 		return res
 	}
-	if res := command(map[string]any{"args": map[string]int{"n": 1}}); res.StatusCode != http.StatusNoContent {
-		t.Fatalf("typed count.add = %d", res.StatusCode)
+	if res := jsPost("1"); res.StatusCode != http.StatusNoContent {
+		t.Fatalf("JS POST /add = %d", res.StatusCode)
 	}
 	waitFrame(`{"kind":"cell","topic":"count","v":1}`)
-	if res := command(map[string]any{"form": "n=1"}); res.StatusCode != http.StatusNoContent {
-		t.Fatalf("form count.add = %d", res.StatusCode)
+	if res := jsPost("1"); res.StatusCode != http.StatusNoContent {
+		t.Fatalf("JS POST /add = %d", res.StatusCode)
 	}
 	waitFrame(`{"kind":"cell","topic":"count","v":2}`)
-	if res := command(map[string]any{"form": "n=500"}); res.StatusCode != http.StatusBadRequest {
-		t.Fatalf("invalid count.add = %d, want 400", res.StatusCode)
+	if res := jsPost("500"); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("invalid JS POST /add = %d, want 400", res.StatusCode)
 	}
 
 	noRedirect := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

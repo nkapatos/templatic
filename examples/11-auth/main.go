@@ -53,28 +53,6 @@ func main() {
 func newApp(w *live.World, manifests *templatic.ManifestSource, l *logins) http.Handler {
 	b := newBoard(w)
 
-	// The JS transport: the user is the page token's, checked against the
-	// command request's cookie.
-	components.PostNotice.Handle(w, func(s *live.Session, in components.NoticeIn) (any, error) {
-		u, err := l.commandUser(s)
-		if err != nil {
-			return nil, err
-		}
-		if err := requireAdmin(u); err != nil {
-			return nil, err
-		}
-		b.post(u, in.Text)
-		return nil, nil
-	})
-	components.Wave.Handle(w, func(s *live.Session, _ components.WaveIn) (any, error) {
-		u, err := l.commandUser(s)
-		if err != nil {
-			return nil, err
-		}
-		b.wave(u)
-		return nil, nil
-	})
-
 	page := func(rw http.ResponseWriter, r *http.Request, failed ui.Option, status int) {
 		u := userOf(r)
 		templatic.SeedPage(r, live.TokenParam(userParam, u.Name))
@@ -104,29 +82,41 @@ func newApp(w *live.World, manifests *templatic.ManifestSource, l *logins) http.
 		http.SetCookie(rw, &http.Cookie{Name: cookieName, Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 		http.Redirect(rw, r, "/login", http.StatusSeeOther)
 	})
-	// Without JS the forms POST here; the user is the cookie's.
-	mux.Handle("POST /notice", l.signedIn(components.PostNotice.FormPOST(w,
-		func(r *http.Request, in components.NoticeIn) (string, error) {
-			u := userOf(r)
+	// The forms POST here, with and without JavaScript; signedIn refuses a
+	// browser without a login (401).
+	refused := func(rw http.ResponseWriter, r *http.Request, err error) {
+		status := live.HTTPStatus(err)
+		if status == http.StatusBadRequest {
+			status = http.StatusUnprocessableEntity
+		}
+		page(rw, r, ui.Failed(r, err), status)
+	}
+	mux.Handle("POST /notice", l.signedIn(components.PostNotice.Form(w,
+		func(r *http.Request, s *live.Session, in components.NoticeIn) (string, error) {
+			u, err := formUser(r, s)
+			if err != nil {
+				return "", err
+			}
 			if err := requireAdmin(u); err != nil {
 				return "", err
 			}
 			b.post(u, in.Text)
 			return "/", nil
-		},
-		func(rw http.ResponseWriter, r *http.Request, err error) {
-			page(rw, r, ui.Failed(r, err), http.StatusUnprocessableEntity)
-		})))
-	mux.Handle("POST /wave", l.signedIn(components.Wave.FormPOST(w,
-		func(r *http.Request, _ components.WaveIn) (string, error) {
-			b.wave(userOf(r))
+		}, refused)))
+	mux.Handle("POST /wave", l.signedIn(components.Wave.Form(w,
+		func(r *http.Request, s *live.Session, _ components.WaveIn) (string, error) {
+			u, err := formUser(r, s)
+			if err != nil {
+				return "", err
+			}
+			b.wave(u)
 			return "/", nil
-		}, nil)))
+		}, refused)))
 	w.Mount(mux, "/live")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("public"))))
 	mux.Handle("GET /_templatic/", http.StripPrefix("/_templatic/", templatic.Assets(distDir)))
 
-	// FormPOST and the login forms have no CSRF check of their own: refuse
+	// The forms have no CSRF token of their own: refuse
 	// cross-origin POSTs for the whole app.
 	return http.NewCrossOriginProtection().Handler(templatic.App(w, manifests, mux))
 }

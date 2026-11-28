@@ -29,7 +29,6 @@ templ Detail(it Item, likes *live.Cell[int]) {
 		<p>{ it.Note }</p>
 		<p class="count">@ui.Cell(likes) likes</p>
 		@ui.FormFor(Like, "/items/"+it.ID+"/like") {
-			<input type="hidden" name="id" value={ it.ID }/>
 			<button type="submit">Like</button>
 		}
 		<p><a href="/">Back to the list</a></p>

@@ -97,15 +97,11 @@ func (l *logins) fromRequest(r *http.Request) (components.User, bool) {
 	return l.lookup(c.Value)
 }
 
-// commandUser returns the user a JS command runs as: the page token's user,
-// and only while the command request's cookie is signed in as that user.
-func (l *logins) commandUser(s *live.Session) (components.User, error) {
-	c, ok := s.CommandRequest().Cookie(cookieName)
-	if !ok {
-		return components.User{}, live.Status(http.StatusUnauthorized, "log in again")
-	}
-	u, ok := l.lookup(c.Value)
-	if !ok || u.Name != s.Params()[userParam] {
+// formUser returns the user a form runs as: the login cookie's (signedIn
+// put it in r), refused with 401 when the live page s belongs to someone else.
+func formUser(r *http.Request, s *live.Session) (components.User, error) {
+	u := userOf(r)
+	if s != nil && s.Params()[userParam] != u.Name {
 		return components.User{}, live.Status(http.StatusUnauthorized, "log in again")
 	}
 	return u, nil

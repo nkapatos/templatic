@@ -24,7 +24,7 @@ API documentation: https://pkg.go.dev/github.com/nkapatos/templatic/live
 | `region.go` | `Region`, `World.Swap` |
 | `collection.go` | `Collection`, `CollectionFamily`, the op history ring, subscriptions |
 | `value.go` | `Value`, `SessionValue` (server-only session values) |
-| `declare.go` | `Command`, `DecodeForm`, `FormPOST`, session cell, value and region declarations |
+| `declare.go` | `Command`, `DecodeForm`, `Command.Form`, session cell, value and region declarations |
 | `commands.go` | `CommandHandler` and the POST handler that dispatches commands |
 | `handle.go` | `InputError`, `Invalid`, `StatusError`, `Validator`, typed `Handle` |
 | `input.go` | `Args`, decoding of JSON and form input, `InputErrors`, `WriteInputError` |

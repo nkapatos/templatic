@@ -41,7 +41,7 @@ Open it in two windows and press a button in one.
   and in the meter, and stays there. `ui.Button` renders a
   `type="button"` with no form, so it does nothing without JavaScript. A
   command that must work without JavaScript is a form (`ui.FormFor` with
-  `Command.FormPOST`), shown in 03.
+  `Command.Form`), shown in 03.
 - **The command handlers are tested without a browser.** `tank_test.go`
   runs them through `livetest` and reads the pushed value.
 

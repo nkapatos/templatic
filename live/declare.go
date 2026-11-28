@@ -44,7 +44,7 @@ func (c *Command[In]) Handle(w *World, fn func(s *Session, in In) (any, error)) 
 	w.Command(c.name, Handle(fn))
 }
 
-// Decode reads the command's input from a no-JS form POST and runs Validate.
+// Decode reads the command's input from a form POST and runs Validate.
 func (c *Command[In]) Decode(r *http.Request) (In, error) { return DecodeForm[In](r) }
 
 // DecodeForm decodes a form POST into In and runs In.Validate; route wildcards win

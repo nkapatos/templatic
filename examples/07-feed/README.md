@@ -45,16 +45,17 @@ other, and turn it back on.
 - **Server-side changes.** `feed.tick` is a plain goroutine; `OnConnect`,
   `OnResume` and `OnDisconnect` log the session lifecycle (`newFeed`).
 - **Forms in live items.** Every message carries a like and a delete form
-  (`ui.FormFor`), live-inserted with the message. With JavaScript they send
-  the command; without it they POST to `/rooms/{room}/messages/{id}/like`
-  or `/delete` (`FormPOST` in `main.go`) and redirect back. A form that
+  (`ui.FormFor`), live-inserted with the message. They POST to
+  `/rooms/{room}/messages/{id}/like` or `/delete` (`Like.Form` and
+  `Delete.Form` in `newMux`, `main.go`); without JavaScript the browser is
+  redirected back. The room and the id come from the route. A form that
   arrives in a live item has no run-once submission id
   ([#32](https://github.com/nkapatos/templatic/issues/32)), so a repeated
   like counts twice.
 - **Posting** reuses the form pattern of [03-forms](../03-forms): one
-  `Post` command, `ui.FormFor` for both transports, `Post.FormPOST` for the
-  no-JS POST to `/rooms/{room}/messages`, which redirects back to the room
-  with the name in the query. The `clear-on-ok` hook in `client/app.ts`
+  `Post` command, `ui.FormFor` and `Post.Form` for both transports at
+  `/rooms/{room}/messages`; without JavaScript it redirects back to the
+  room with the name in the query. The `clear-on-ok` hook in `client/app.ts`
   clears the message field after a send.
 - **Typing is safe.** A like re-renders its message on every page; a field
   someone is typing in keeps its value and focus.

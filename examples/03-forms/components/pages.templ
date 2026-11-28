@@ -28,7 +28,6 @@ templ Edit(list *live.Region, b Book, failed ui.Option) {
 	@Layout("Edit " + b.Title) {
 		<h1>Edit “{ b.Title }”</h1>
 		@ui.FormFor(Save, "/books/"+b.ID, failed) {
-			<input type="hidden" name="id" value={ b.ID }/>
 			@bookFields(b)
 			<button type="submit">Save</button>
 			<a href="/">Back to the list</a>

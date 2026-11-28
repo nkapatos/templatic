@@ -55,22 +55,15 @@ func main() {
 		}
 		templ.Handler(c, templ.WithStatus(status)).ServeHTTP(rw, r)
 	}
-	// Without JavaScript the forms POST here: success redirects (303) to the
-	// page the book is on, refused input renders that page again with 422.
-	saveForm := components.Save.FormPOST(w,
-		func(r *http.Request, in components.BookIn) (string, error) {
-			b, err := save(in)
-			if err != nil {
-				return "", err
-			}
-			if r.PathValue("id") == "" {
-				return "/", nil
-			}
-			return "/books/" + b.ID, nil
-		},
-		func(rw http.ResponseWriter, r *http.Request, err error) {
-			page(rw, r, ui.Failed(r, err), http.StatusUnprocessableEntity)
-		})
+	// Without JavaScript a refused save renders the page again: 422 with the
+	// errors marked, or the error's own status (404 for an unknown book).
+	saveForm := saveHandler(w, save, func(rw http.ResponseWriter, r *http.Request, err error) {
+		status := live.HTTPStatus(err)
+		if status == http.StatusBadRequest {
+			status = http.StatusUnprocessableEntity
+		}
+		page(rw, r, ui.Failed(r, err), status)
+	})
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(rw http.ResponseWriter, r *http.Request) { page(rw, r, nil, http.StatusOK) })
@@ -87,8 +80,22 @@ func main() {
 	}
 }
 
-// wire declares the books region and registers Save's JS handler on w. It
-// returns the region and the save step both transports run.
+// saveHandler serves Save at the forms' action URLs, with and without
+// JavaScript: without it, success redirects (303) to the page the book is on.
+func saveHandler(w *live.World, save func(components.BookIn) (components.Book, error), invalid func(http.ResponseWriter, *http.Request, error)) http.Handler {
+	return components.Save.Form(w, func(r *http.Request, _ *live.Session, in components.BookIn) (string, error) {
+		b, err := save(in)
+		if err != nil {
+			return "", err
+		}
+		if r.PathValue("id") == "" {
+			return "/", nil
+		}
+		return "/books/" + b.ID, nil
+	}, invalid)
+}
+
+// wire declares the books region on w and returns it with the save step.
 func wire(w *live.World, books *store) (*live.Region, func(components.BookIn) (components.Book, error)) {
 	list := w.Region("books", func() templ.Component { return components.BookList(books.all()) })
 	save := func(in components.BookIn) (components.Book, error) {
@@ -102,9 +109,5 @@ func wire(w *live.World, books *store) (*live.Region, func(components.BookIn) (c
 		}
 		return b, nil
 	}
-	components.Save.Handle(w, func(_ *live.Session, in components.BookIn) (any, error) {
-		_, err := save(in)
-		return nil, err
-	})
 	return list, save
 }

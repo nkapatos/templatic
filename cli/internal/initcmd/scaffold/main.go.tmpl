@@ -34,13 +34,6 @@ func main() {
 	w := live.NewWorld(opts...)
 	count := live.NewCell(w, "count", 0)
 
-	// The JS transport: the form's fields decode into AddIn, Validate runs
-	// (a refusal fills the form's ui.FieldError), then the handler.
-	components.Add.Handle(w, func(s *live.Session, in components.AddIn) (any, error) {
-		count.Update(func(v int) int { return v + in.N })
-		return nil, nil
-	})
-
 	// The generated manifest. TC_MODE=dev follows `templatic dev`
 	// rebuilds and reloads open pages; otherwise it is read once.
 	manifests, err := templatic.ManifestFor(os.Getenv("TC_MODE"), distDir)
@@ -53,11 +46,13 @@ func main() {
 	mux.HandleFunc("GET /{$}", func(rw http.ResponseWriter, r *http.Request) {
 		templ.Handler(components.Home(count, nil)).ServeHTTP(rw, r)
 	})
-	// The same command without JS: the form POSTs here and the browser
-	// follows the redirect back. A refused input renders the page again
+	// The form POSTs here, with and without JavaScript: its fields decode
+	// into AddIn and Validate runs before the function. With JavaScript a
+	// refusal fills the form's ui.FieldError in place; without, the browser
+	// follows the redirect back, and a refused input renders the page again
 	// with the errors and what was typed.
-	mux.Handle("POST /add", components.Add.FormPOST(w,
-		func(r *http.Request, in components.AddIn) (string, error) {
+	mux.Handle("POST /add", components.Add.Form(w,
+		func(r *http.Request, _ *live.Session, in components.AddIn) (string, error) {
 			count.Update(func(v int) int { return v + in.N })
 			return "/", nil
 		},

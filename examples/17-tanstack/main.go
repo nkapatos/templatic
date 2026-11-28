@@ -56,8 +56,8 @@ func main() {
 	mux.Handle("GET /signup", templ.Handler(components.SignupPage(signup, nil, users.taken)))
 	// Without JavaScript the plain form POSTs here: success redirects back,
 	// refused input renders the page again with 422.
-	mux.Handle("POST /signup", components.Register.FormPOST(w,
-		func(r *http.Request, in components.SignupIn) (string, error) {
+	mux.Handle("POST /signup", components.Register.Form(w,
+		func(r *http.Request, _ *live.Session, in components.SignupIn) (string, error) {
 			return "/signup", users.register(in)
 		},
 		func(rw http.ResponseWriter, r *http.Request, err error) {
