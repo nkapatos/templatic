@@ -255,6 +255,22 @@ func TestAtDeclaresPushURL(t *testing.T) {
 	}
 }
 
+func TestReplaceAnswersWithAReplacingURL(t *testing.T) {
+	w := NewWorld()
+	w.Command("search", func(*Session, Args) (any, error) { return Replace("/search?q=ke"), nil })
+	ts := serveWorld(t, w)
+	r := openStream(t, ts, "rp-sid")
+	defer r.Close()
+	r.discardUntilReady(t)
+	body, _ := io.ReadAll(postCommand(t, ts, "rp-sid", "search", nil).Body)
+	if got := strings.TrimSpace(string(body)); got != `{"url":"/search?q=ke","replace":true}` {
+		t.Fatalf("got %s", got)
+	}
+	if got := sessionOf(w, "rp-sid").URL(); got.RawQuery != "q=ke" {
+		t.Fatalf("Session.URL() must follow Replace, got %v", got)
+	}
+}
+
 func TestAtRejectsNonRelativeURL(t *testing.T) {
 	defer func() {
 		if recover() == nil {

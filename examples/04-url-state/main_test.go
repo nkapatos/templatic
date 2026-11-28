@@ -53,3 +53,26 @@ func TestParseViewFallsBack(t *testing.T) {
 		t.Fatalf("ParseView = %+v", got)
 	}
 }
+
+func TestRefiningASearchReplacesTheEntry(t *testing.T) {
+	w := live.NewWorld()
+	components.Navigate.Handle(w, navigate)
+	s := livetest.New(t, w)
+
+	for _, step := range []struct {
+		view    components.View
+		replace bool
+	}{
+		{components.View{Tab: "open", Q: "ke"}, false},  // the first search is a step back
+		{components.View{Tab: "open", Q: "keys"}, true}, // typing on refines it
+		{components.View{Tab: "done", Q: "keys"}, false},
+	} {
+		res, err := livetest.Call(s, components.Navigate, step.view)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if push := res.(live.Push); push.Replaces() != step.replace {
+			t.Errorf("%+v: replaces = %v, want %v", step.view, push.Replaces(), step.replace)
+		}
+	}
+}

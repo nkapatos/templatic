@@ -36,3 +36,15 @@ func TestPostFormDrivesAFormHandlerAsTheRuntime(t *testing.T) {
 		t.Fatalf("refused input: %d", rec.Code)
 	}
 }
+
+func TestSessionURLFollowsACommandsAt(t *testing.T) {
+	w := live.NewWorld()
+	w.Command("go", func(*live.Session, live.Args) (any, error) { return live.At("/inbox?tab=done"), nil })
+	s := livetest.New(t, w)
+	if _, err := s.Do("go", nil); err != nil {
+		t.Fatal(err)
+	}
+	if u := s.URL(); u.Path != "/inbox" || u.RawQuery != "tab=done" {
+		t.Fatalf("URL() = %v, want /inbox?tab=done", u)
+	}
+}

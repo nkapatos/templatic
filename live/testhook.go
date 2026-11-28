@@ -100,10 +100,16 @@ func init() {
 		s.mu.Lock()
 		s.cmdReq = info
 		s.mu.Unlock()
+		in := jsonArgs(args)
 		if form != nil {
-			return fn(s, formArgs(form))
+			in = formArgs(form)
 		}
-		return fn(s, jsonArgs(args))
+		res, err := fn(s, in)
+		// as the command endpoint does: the session is where the result declares
+		if push, ok := res.(Push); ok && err == nil {
+			s.setReportedURL(push.URL())
+		}
+		return res, err
 	}
 	livehook.CellValue = func(sa any, topic string) (jsontext.Value, bool) {
 		s := sa.(*Session)
