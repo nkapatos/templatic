@@ -44,3 +44,12 @@ changes and reloads open pages.
 The examples use the templatic checkout they sit in (a `replace ../..` in
 each `go.mod`), so `go tool templatic` runs the checkout's CLI. An app of
 your own requires a templatic release instead.
+
+## Checking them in a browser
+
+`mise run examples-browser` generates every example, starts each one and
+drives it in Chromium with `examples/browser`, with JavaScript and without:
+each scenario (`examples/browser/scenarios/<example>.cjs`) does what the
+example's README says it shows and fails on a wrong page, a console error
+or an unexpected error response. `mise run examples-browser 03-forms`
+checks one.

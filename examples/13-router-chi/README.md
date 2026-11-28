@@ -18,7 +18,7 @@ go run .                     # http://localhost:8080
   use, under the base Boot's `Live: "/live"` names.
 - **Path values need nothing.** chi sets `r.SetPathValue` for its URL
   params, so `r.PathValue("id")` in the handlers and the form decoding
-  see `{id}` as with the ServeMux. `TestLikeFormUsesThePathID` checks it.
+  see `{id}` as with the ServeMux.
 - **Prefixes are wildcards.** `/static/*` and `/_templatic/*` instead of
   the ServeMux's trailing slash; `http.StripPrefix` is the same.
 - **The chi router is the handler.** `templatic.App` wraps the

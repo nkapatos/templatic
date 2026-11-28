@@ -18,7 +18,7 @@ go run .                     # http://localhost:8080
 - **Path values come from WrapHandler.** echo keeps its params in
   `c.PathValues()`, not in the request; echo v5's `WrapHandler` copies
   them into `r.SetPathValue`, so `r.PathValue("id")` and the form
-  decoding see `:id`. `TestLikeFormUsesThePathID` checks it. A handler
+  decoding see `:id`. A handler
   called another way (`h.ServeHTTP(c.Response(), c.Request())`, which is
   what echo v4's `WrapHandler` does) sees no path value: the item page is
   a 404 for every id, and the like form decodes the `id` field instead,

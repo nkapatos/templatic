@@ -60,8 +60,6 @@ Open it in two windows and press a button in one.
   the `traffic.window` cell; its bind changes the visible window on every
   open chart. Buttons need JavaScript, as in
   [02](../02-live-value).
-- **The server side is tested without a browser.** `traffic_test.go`
-  checks the trimmed series and the window command through `livetest`.
 
 ## Files
 
@@ -69,7 +67,6 @@ Open it in two windows and press a button in one.
 |---|---|
 | `main.go` | the world, the sampling goroutine, the mux and the asset handlers |
 | `traffic.go` | the two cells, the `SetWindow` handler, the sampler |
-| `traffic_test.go` | the series and the command tested with `livetest` |
 | `components/traffic.go` | `ChartProps`, `SetWindow` and `WindowIn` |
 | `components/chart.templ` | the island pragma and its fallback markup |
 | `components/home.templ` | the chart page and the page without an island |

@@ -16,7 +16,7 @@ import (
 
 // BootOptions configures Boot.
 type BootOptions struct {
-	// Live is the mount base of the world, e.g. "/live".
+	// Live is the mount base of the world, e.g. "/live"; empty renders a static page that opens no stream.
 	Live string
 	// Assets is the URL base of the generated bundles, e.g. "/_templatic".
 	Assets string
@@ -36,9 +36,13 @@ func Boot(o BootOptions) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		base := strings.TrimSuffix(o.Live, "/")
 		o := o // per render: ctx fills must not stick to the component
-		token := o.Token
-		if token == "" {
-			token = PageToken(ctx) // templatic.WithPageTokens
+		// the runtime connects only with a token, so a page without Live gets none
+		token := ""
+		if o.Live != "" {
+			token = o.Token
+			if token == "" {
+				token = PageToken(ctx) // templatic.WithPageTokens
+			}
 		}
 		if o.Manifest == nil {
 			o.Manifest = pagestate.Manifest(ctx) // templatic.WithAssets

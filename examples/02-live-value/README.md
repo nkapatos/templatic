@@ -43,9 +43,6 @@ Open it in two windows and press a button in one.
   with JavaScript the page stays and the level updates live; without, the
   browser is sent back to the page, which renders the new level. Forms
   with fields are 03's topic.
-- **The command handlers are tested without a browser.** `tank_test.go`
-  posts to them as the runtime does (`livetest.Session.PostForm`) and
-  reads the pushed value.
 
 ## Files
 
@@ -53,7 +50,6 @@ Open it in two windows and press a button in one.
 |---|---|
 | `main.go` | the world, the drain goroutine, the mux and the asset handlers |
 | `tank.go` | the cell, the command handlers, the drain loop |
-| `tank_test.go` | the handlers tested with `livetest` |
 | `components/tank.go` | the `Fill` and `Empty` commands and `FillIn` |
 | `components/home.templ` | the page: the cell, the meter, the buttons |
 | `components/layout.templ` | the document, `Head`, `Boot` |

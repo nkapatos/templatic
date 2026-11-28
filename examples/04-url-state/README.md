@@ -42,9 +42,6 @@ go run .                     # http://localhost:8080
   `live.Replace` instead of `live.At` (`navigate` in `main.go`), so typing
   is one step back, not one per pause. Submitting the same query twice
   adds no entry.
-- **Tests through livetest.** `main_test.go` runs `Navigate` on one of two
-  sessions and checks the receipt URL and that only that session got a
-  swap, and that refining a search replaces the entry.
 
 The query is parsed by hand: there is no typed query decoding yet
 ([#5](https://github.com/nkapatos/templatic/issues/5)).
@@ -60,7 +57,6 @@ waiting one winning, so the address and the inbox end on the same view.
 | File | Holds |
 |---|---|
 | `main.go` | the world, the `Navigate` handler, the page route |
-| `main_test.go` | the command and URL round-trip tests |
 | `components/inbox.go` | the items, `View` and its parsing, `Navigate` |
 | `components/inbox.templ` | the page with the search form, the `Inbox` region |
 | `components/layout.templ` | the document, `Head`, `Boot` |

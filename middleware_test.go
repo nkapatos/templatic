@@ -53,6 +53,18 @@ func TestWithPageTokensSeedsAndBoots(t *testing.T) {
 	}
 }
 
+func TestBootWithoutLiveIsStaticUnderPageTokens(t *testing.T) {
+	w := live.NewWorld(live.WithKey([]byte("0123456789abcdef0123456789abcdef")))
+	var page string
+	h := templatic.WithPageTokens(w)(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		page = renderString(t, r.Context(), templatic.Boot(templatic.BootOptions{Assets: "/a"}))
+	}))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+	if strings.Contains(page, `"token"`) {
+		t.Fatalf("a page without Live must carry no token, so it opens no stream: %s", page)
+	}
+}
+
 func TestWithAssetsBootPreloadsRenderedIslands(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "tc.json"), []byte(`{"version":2,"modules":{"islands/x-card":{"file":"islands/x-card-1.js"}}}`), 0o644); err != nil {
