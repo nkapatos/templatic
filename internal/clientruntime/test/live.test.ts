@@ -398,3 +398,60 @@ describe("topics the page uses", () => {
 		expect(calls.map((c) => c.json())).toEqual([{ sid: "test-sid", subscribe: { "price.x": -1, inner: -1 } }]);
 	});
 });
+
+describe("a swap over the focused field", () => {
+	test("keeps what the user typed, checked or chose, and morphs the rest", async () => {
+		document.body.innerHTML = `<div data-tc-region="search">
+			<input id="q" name="q" value="" class="old"><input id="other" name="other" value="a">
+			<input id="box" type="checkbox"><select id="sort"><option value="a" selected>A</option><option value="b">B</option></select>
+		</div>`;
+		const q = document.getElementById("q") as HTMLInputElement;
+		q.focus();
+		q.value = "ke";
+		const fresh = `<input id="q" name="q" value="server" class="new"><input id="other" name="other" value="b">
+			<input id="box" type="checkbox"><select id="sort"><option value="a" selected>A</option><option value="b">B</option><option value="c">C</option></select>`;
+		await frame({ kind: "swap", topic: "search", html: fresh });
+		expect([q.value, q.className, (document.getElementById("other") as HTMLInputElement).value]).toEqual(["ke", "new", "b"]);
+
+		const sort = document.getElementById("sort") as HTMLSelectElement;
+		sort.focus();
+		sort.value = "b";
+		await frame({ kind: "swap", topic: "search", html: fresh });
+		expect([sort.value, sort.options.length]).toEqual(["b", 3]);
+
+		const box = document.getElementById("box") as HTMLInputElement;
+		box.focus();
+		box.checked = true;
+		await frame({ kind: "swap", topic: "search", html: fresh });
+		expect(box.checked).toBe(true);
+
+		box.blur();
+		await frame({ kind: "swap", topic: "search", html: fresh });
+		expect([q.value, sort.value, box.checked]).toEqual(["server", "a", false]);
+	});
+});
+
+describe("swap handling", () => {
+	test("a hidden tab still drains events, on a timer", async () => {
+		document.body.innerHTML = `<span data-tc-cell="n">0</span>`;
+		const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+		const raf = vi.spyOn(window, "requestAnimationFrame");
+		live.apply({ kind: "cell", topic: "n", v: 5 });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(document.querySelector("[data-tc-cell]")!.textContent).toBe("5");
+		expect(raf).not.toHaveBeenCalled();
+		hidden.mockRestore();
+	});
+
+	test("a morph that throws puts the region's islands back", async () => {
+		document.body.innerHTML = `<div data-tc-region="ws"><x-editor data-tc-island="x-editor"><p>LIVE</p></x-editor></div>`;
+		const host = document.querySelector("x-editor")!;
+		const { Idiomorph } = await import("idiomorph");
+		vi.spyOn(Idiomorph, "morph").mockImplementation(() => {
+			throw new Error("boom");
+		});
+		await frame({ kind: "swap", topic: "ws", html: `<p>new</p>` });
+		expect(document.querySelector("x-editor")).toBe(host);
+		expect(host.textContent).toBe("LIVE");
+	});
+});

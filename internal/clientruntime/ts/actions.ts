@@ -1,5 +1,6 @@
 import { send } from "./commands";
 import { wire as wireHistory } from "./history";
+import { navigate } from "./nav";
 
 /** swapsAttr names the attribute declaring a trigger's swap region. */
 export const swapsAttr = "data-tc-swaps";
@@ -43,7 +44,9 @@ export function wire(): void {
 				return;
 			}
 		}
-		void send(action, args).catch((err) => {
+		// a link moves the page: links and history replays run one at a time; a button does not wait for them
+		const sent = trigger instanceof HTMLAnchorElement ? navigate(() => send(action, args)) : send(action, args);
+		void sent.catch((err) => {
 			console.warn(`tc: command ${action} failed`, err);
 		});
 	});

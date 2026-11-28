@@ -294,3 +294,22 @@ describe("forms rendered without a submission id", () => {
 		expect(calls[0].json().submit).toBe(key);
 	});
 });
+
+describe("a form whose command swaps a region", () => {
+	test("posts natively where the page lacks the region", () => {
+		const f = form(`<input name="title" value="t">`);
+		f.dataset.tcForm = "note.add";
+		f.setAttribute("action", "/notes");
+		f.setAttribute("data-tc-swaps", "tally");
+		forms.wireForms();
+		tc.markReady();
+		const calls = stubFetch({ status: 204 });
+		const ev = new SubmitEvent("submit", { bubbles: true, cancelable: true });
+		f.dispatchEvent(ev);
+		expect([ev.defaultPrevented, calls.length]).toEqual([false, 0]);
+		document.body.insertAdjacentHTML("beforeend", `<div data-tc-region="tally"></div>`);
+		const ev2 = new SubmitEvent("submit", { bubbles: true, cancelable: true });
+		f.dispatchEvent(ev2);
+		expect([ev2.defaultPrevented, calls.length]).toEqual([true, 1]);
+	});
+});

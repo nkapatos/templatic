@@ -125,8 +125,9 @@ func (h *commandsHandler) run(w http.ResponseWriter, r *http.Request, s *Session
 		// The client pushes this URL on success, so it is the page's address from now on.
 		s.setReportedURL(push.URL())
 		payload, err := json.Marshal(struct {
-			URL string `json:"url"`
-		}{URL: push.URL()})
+			URL     string `json:"url"`
+			Replace bool   `json:"replace,omitzero"`
+		}{URL: push.URL(), Replace: push.Replaces()})
 		if err != nil {
 			http.Error(w, "live: command result is not encodable", http.StatusInternalServerError)
 			return

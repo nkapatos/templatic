@@ -187,3 +187,14 @@ func TestFormErrorTakesOptions(t *testing.T) {
 		t.Fatalf("got %s", got)
 	}
 }
+
+func TestFormForNamesTheRegionItsCommandSwaps(t *testing.T) {
+	cmd := live.NewCommand[addIn]("count.add.swapping").Swaps("tally")
+	var buf bytes.Buffer
+	if err := ui.FormFor(cmd, "/add").Render(context.Background(), &buf); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), `data-tc-swaps="tally"`) {
+		t.Fatalf("got %s", buf.String())
+	}
+}

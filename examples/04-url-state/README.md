@@ -38,20 +38,22 @@ go run .                     # http://localhost:8080
   same page route. With JS the `search` hook (`client/search.ts`) raises
   `Navigate` instead, on submit and once typing pauses, and sets the
   fields from the URL after every other navigation, back and forward
-  included. Each search it raises is a history entry of its own:
-  `live.At` always pushes
-  ([#61](https://github.com/nkapatos/templatic/issues/61)).
+  included. The first search is a history entry; refining it answers
+  `live.Replace` instead of `live.At` (`navigate` in `main.go`), so typing
+  is one step back, not one per pause. Submitting the same query twice
+  adds no entry.
 - **Tests through livetest.** `main_test.go` runs `Navigate` on one of two
   sessions and checks the receipt URL and that only that session got a
-  swap.
+  swap, and that refining a search replaces the entry.
 
 The query is parsed by hand: there is no typed query decoding yet
 ([#5](https://github.com/nkapatos/templatic/issues/5)).
 
 Going back to the entry the page was first loaded at reloads it: that entry
-has no command to replay. Clicking faster than the server answers can leave
-the address and the inbox out of step
-([#34](https://github.com/nkapatos/templatic/issues/34)).
+has no command to replay
+([#34](https://github.com/nkapatos/templatic/issues/34)). Clicking faster
+than the server answers is safe: links run one at a time, the newest
+waiting one winning, so the address and the inbox end on the same view.
 
 ## Files
 

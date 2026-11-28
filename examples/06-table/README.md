@@ -38,9 +38,8 @@ go run .                     # http://localhost:8080
   stays. Without JS the form GETs `/?q=…`, the same page route. With JS the
   `search` hook (`client/search.ts`) raises `Navigate` instead, on submit
   and once typing pauses, and sets the fields from the URL after every
-  other navigation, back and forward included. As in 04, each search it
-  raises is a history entry of its own
-  ([#61](https://github.com/nkapatos/templatic/issues/61)).
+  other navigation, back and forward included. As in 04, refining a
+  search replaces the history entry (`live.Replace` in `navigate`).
 - **World cells next to session regions.** The row count and the time of
   the last change are world `live.Cell`s shown with `ui.Cell`, as in
   [02-live-value](../02-live-value). Rows changed by the latest update are
@@ -51,9 +50,7 @@ go run .                     # http://localhost:8080
   own view.
 
 The query is parsed by hand: there is no typed query decoding yet
-([#5](https://github.com/nkapatos/templatic/issues/5)). Fast
-clicks can leave the address and the table out of step, as in 04
-([#34](https://github.com/nkapatos/templatic/issues/34)).
+([#5](https://github.com/nkapatos/templatic/issues/5)).
 
 ## Files
 

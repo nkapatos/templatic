@@ -82,6 +82,9 @@ func (v View) URL() string {
 // WithTab returns v on tab, keeping the search and closing the item.
 func (v View) WithTab(tab string) View { return View{Tab: tab, Q: v.Q} }
 
+// WithQ is v searching for q.
+func (v View) WithQ(q string) View { v.Q = q; return v }
+
 // WithOpen returns v with item id open.
 func (v View) WithOpen(id string) View { v.Open = id; return v }
 

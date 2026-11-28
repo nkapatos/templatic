@@ -1,4 +1,5 @@
 import { pairOf, recordNav, send, sendForm } from "./commands";
+import { navigate } from "./nav";
 
 /** wire mounts the popstate handler that replays a pushed entry's command or reloads; idempotent. */
 export function wire(): void {
@@ -13,11 +14,13 @@ export function wire(): void {
 			return;
 		}
 		// the browser already moved onto this entry, so the replay must not push a URL
-		(pair.form !== undefined
-			? sendForm(pair.action, pair.form, { navHandled: true })
-			: send(pair.action, pair.args, { navHandled: true }))
+		navigate(() =>
+			pair.form !== undefined
+				? sendForm(pair.action, pair.form, { navHandled: true })
+				: send(pair.action, pair.args, { navHandled: true }),
+		)
 			.then((raw) => {
-				if (popSerial !== serial) return; // a later pop owns this entry
+				if (raw === undefined || popSerial !== serial) return; // a later pop owns this entry
 				const url = (raw as { url?: string }).url;
 				if (typeof url !== "string" || url === "") {
 					recordNav("replay", location.href);

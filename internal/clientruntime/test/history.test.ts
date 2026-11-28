@@ -108,11 +108,13 @@ describe("pop", () => {
 		await settle();
 		history.forward();
 		await settle();
-		expect(calls).toHaveLength(2);
+		// replays run one at a time: the newer waits for the stale one to settle
+		expect(calls).toHaveLength(1);
 		stale.resolve({ status: 200, body: { url: "/daily/2026-99-99" } });
 		await settle();
 		expect(location.pathname).toBe("/daily/2026-01-07");
 		expect(commands.lastNavRecord().decision).toBe("push");
+		expect(calls).toHaveLength(2);
 		current.resolve({ status: 200, body: { url: "/daily/2026-01-07" } });
 		await settle();
 		expect(commands.lastNavRecord().decision).toBe("replay");
@@ -165,4 +167,36 @@ test("recordNav is the single observability channel", () => {
 	expect(commands.lastNavRecord().decision).toBe("replay");
 	commands.recordNav("push", "/y");
 	expect(commands.lastNavRecord().url).toBe("/y");
+});
+
+describe("replace", () => {
+	test("Replace and the current URL replace the entry; a new URL pushes", () => {
+		commands.applyPush("search", { args: { q: "a" } }, "/search?q=a");
+		const n = history.length;
+		commands.applyPush("search", { args: { q: "ke" } }, "/search?q=ke", true);
+		expect([history.length, location.search, (history.state as { args: unknown }).args]).toEqual([n, "?q=ke", { q: "ke" }]);
+		commands.applyPush("search", { args: { q: "ke" } }, "/search?q=ke");
+		expect([history.length, commands.lastNavRecord().decision]).toEqual([n, "replace"]);
+		commands.applyPush("search", { args: { q: "keys" } }, "/search?q=keys");
+		expect([history.length, commands.lastNavRecord().decision]).toEqual([n + 1, "push"]);
+	});
+});
+
+describe("navigation order", () => {
+	test("links run one at a time and only the newest waiting one runs", async () => {
+		document.body.innerHTML += `<a id="a" href="/a" data-tc-action="go" data-tc-args='{"to":"a"}'>a</a>
+			<a id="b" href="/b" data-tc-action="go" data-tc-args='{"to":"b"}'>b</a>
+			<a id="c" href="/c" data-tc-action="go" data-tc-args='{"to":"c"}'>c</a>`;
+		const first = Promise.withResolvers<Reply>();
+		const calls = stubFetch(first.promise, { status: 200, body: { url: "/c" } });
+		const actions = await import("../ts/actions");
+		actions.wire();
+		for (const id of ["a", "b", "c"]) document.getElementById(id)!.click();
+		await settle();
+		expect(calls).toHaveLength(1);
+		first.resolve({ status: 200, body: { url: "/a" } });
+		await settle();
+		expect(calls.map((c) => c.json().args)).toEqual([{ to: "a" }, { to: "c" }]);
+		expect(location.pathname).toBe("/c");
+	});
 });

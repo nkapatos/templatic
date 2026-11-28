@@ -35,6 +35,13 @@ func Form(name string, action string, opts ...FormOption) templ.Component {
 	if cfg.multipart {
 		extra = ` enctype="multipart/form-data" data-tc-multipart`
 	}
+	if cfg.swaps != "" {
+		if !markup.ValidName(cfg.swaps) {
+			panic("templatic: swap target must match [A-Za-z0-9_.-]+: " + cfg.swaps)
+		}
+		// where the page lacks the region, the runtime lets the browser post natively
+		extra += ` data-tc-swaps="` + cfg.swaps + `"`
+	}
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if cfg.failed != nil {
 			ctx = context.WithValue(ctx, failedKey{}, cfg.failed)
@@ -76,11 +83,15 @@ type FormOption = Option
 func Multipart() FormOption { return func(c *elemConfig) { c.multipart = true } }
 
 // FormFor renders a form for cmd that POSTs to action, where cmd.Form serves
-// it with and without JavaScript. It panics when In has a field no form can
-// fill.
+// it with and without JavaScript; where the page lacks the region cmd
+// swaps, the browser posts natively. It panics when In has a field no form
+// can fill.
 func FormFor[In any](cmd *live.Command[In], action string, opts ...Option) templ.Component {
 	if err := form.Check(reflect.TypeFor[In]()); err != nil {
 		panic("templatic: ui.FormFor(" + cmd.Name() + "): " + err.Error())
+	}
+	if t := cmd.SwapTopic(); t != "" {
+		opts = append([]Option{Swaps(t)}, opts...)
 	}
 	return Form(cmd.Name(), action, opts...)
 }

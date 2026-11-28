@@ -54,11 +54,17 @@ func main() {
 }
 
 // navigate swaps the inbox for this session only and declares the URL the
-// session is now at; the runtime pushes it onto the history.
+// session is now at; the runtime pushes it onto the history. Refining a
+// search replaces the entry, so typing is one step back, not one per pause.
 func navigate(s *live.Session, in components.View) (any, error) {
 	v := in.Clean()
+	u := s.URL()
+	was := components.ParseView(u.Query()).Clean()
 	if err := components.InboxRegion.Swap(s, v); err != nil {
 		return nil, err
+	}
+	if was.Q != "" && v.Q != "" && was.WithQ(v.Q) == v {
+		return live.Replace(v.URL()), nil
 	}
 	return live.At(v.URL()), nil
 }

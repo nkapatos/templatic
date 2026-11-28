@@ -15,6 +15,7 @@ interface CommandBody extends Payload {
 interface ResultEnvelope {
 	result?: unknown;
 	url?: string;
+	replace?: boolean;
 }
 
 /** ReplayPair is the receipt stored on a pushed history entry; tc is the pair format version. */
@@ -71,15 +72,15 @@ export function pairOf(state: unknown): ReplayPair | null {
 
 /** NavRecord is the URL layer's last navigation decision. */
 export interface NavRecord {
-	decision: "push" | "replay" | "reload" | "ignored";
+	decision: "push" | "replace" | "replay" | "reload" | "ignored";
 	url: string;
 }
 let lastNav: NavRecord = { decision: "ignored", url: "" };
 
-/** recordNav records a navigation decision and emits nav for push and replay. */
+/** recordNav records a navigation decision and emits nav for push, replace and replay. */
 export function recordNav(decision: NavRecord["decision"], url: string): void {
 	lastNav = { decision, url };
-	if (decision === "push" || decision === "replay") emit("nav", { url });
+	if (decision === "push" || decision === "replace" || decision === "replay") emit("nav", { url });
 }
 
 /** lastNavRecord returns the last navigation decision. */
@@ -176,7 +177,7 @@ function raise(action: string, payload: Payload, opts?: SendOptions): Promise<un
 					return;
 				}
 				if (typeof envelope.url === "string" && !opts?.navHandled) {
-					applyPush(action, payload, envelope.url);
+					applyPush(action, payload, envelope.url, envelope.replace === true);
 				}
 				resolve(opts?.navHandled ? envelope : (envelope.result ?? null));
 			}, () => {
@@ -237,8 +238,11 @@ export function postForm(action: string, url: string, body: FormData | string, o
 	});
 }
 
-/** applyPush pushes a server-declared same-origin URL with its receipt; other origins are refused and recorded. */
-export function applyPush(action: string, payload: Payload, url: string): void {
+/**
+ * applyPush moves to a server-declared same-origin URL with its receipt: a new history entry, or the current one
+ * replaced when replace is set or the URL is the current one. Other origins are refused and recorded.
+ */
+export function applyPush(action: string, payload: Payload, url: string, replace = false): void {
 	try {
 		const target = new URL(url, location.href);
 		if (target.origin !== location.origin) {
@@ -247,6 +251,12 @@ export function applyPush(action: string, payload: Payload, url: string): void {
 			return;
 		}
 		const pair: ReplayPair = { tc: HISTORY_VERSION, action, ...payload };
+		// the same address again is no new place to go back to
+		if (replace || target.href === location.href) {
+			history.replaceState(pair, "", target.href);
+			recordNav("replace", target.href);
+			return;
+		}
 		history.pushState(pair, "", target.href);
 		recordNav("push", target.href);
 	} catch (err) {

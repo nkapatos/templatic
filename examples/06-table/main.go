@@ -91,11 +91,16 @@ func newTable(w *live.World, st *store) *table {
 
 // navigate swaps the table for this session only, remembers the view for
 // later refreshes and declares the URL the session is now at.
+// Refining a search replaces the history entry instead of adding one.
 func (t *table) navigate(s *live.Session, in components.View) (any, error) {
+	was := viewOf.Get(s)
 	res := t.st.Query(in.Clean())
 	viewOf.Set(s, res.View)
 	if err := components.TableRegion.Swap(s, res); err != nil {
 		return nil, err
+	}
+	if v := res.View; was.Q != "" && v.Q != "" && v.Q != was.Q && v.Sort == was.Sort && v.Dir == was.Dir {
+		return live.Replace(v.URL()), nil
 	}
 	return live.At(res.View.URL()), nil
 }
