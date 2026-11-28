@@ -48,6 +48,10 @@ type Session struct {
 	pageURL   url.URL
 	cmdReq    RequestInfo
 
+	topicsMu  sync.Mutex
+	topics    map[string]struct{} // cell and region topics the page uses; cells and swaps of others are dropped
+	allTopics bool                // a livetest session has no markup and receives every topic
+
 	cellMu sync.Mutex
 	cells  map[string]cellView
 	subs   map[string]subscribable // collections the page shows; guarded by cellMu
@@ -151,6 +155,10 @@ func (s *Session) offer(ev event) {
 	if s.retired {
 		return
 	}
+	// A page is sent only the cells and regions it uses.
+	if latestWins(ev.kind) && !s.uses(ev.topic) {
+		return
+	}
 	c := s.conn
 	if c == nil {
 		if ev.kind == KindSwap {
@@ -178,6 +186,34 @@ func (s *Session) offer(ev event) {
 		c.overflow.Store(true)
 		c.end(ReasonOverflow)
 	}
+}
+
+// maxTopics bounds how many cell and region topics one page may use.
+const maxTopics = 4096
+
+// uses reports whether the page uses the cell or region topic.
+func (s *Session) uses(topic string) bool {
+	s.topicsMu.Lock()
+	defer s.topicsMu.Unlock()
+	if s.allTopics {
+		return true
+	}
+	_, ok := s.topics[topic]
+	return ok
+}
+
+// use records that the page uses topic and reports whether it is new.
+func (s *Session) use(topic string) bool {
+	s.topicsMu.Lock()
+	defer s.topicsMu.Unlock()
+	if _, ok := s.topics[topic]; ok || len(s.topics) >= maxTopics {
+		return false
+	}
+	if s.topics == nil {
+		s.topics = map[string]struct{}{}
+	}
+	s.topics[topic] = struct{}{}
+	return true
 }
 
 func latestWins(kind string) bool { return kind == KindCell || kind == KindSwap }
@@ -435,7 +471,7 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 	initial := append(s.world.snapshot(), s.snapshot()...)
 	initial = append(initial, prelude...)
 	for i, ev := range initial {
-		if !newer(ev) {
+		if (ev.kind == KindCell && !s.uses(ev.topic)) || !newer(ev) {
 			continue
 		}
 		if err := frame(ev.kind, ev.topic, ev.body); err != nil {
@@ -538,14 +574,19 @@ func (c *coalescer) add(ev event) {
 func (c *coalescer) events() []event { return c.order }
 
 // subscribe makes s receive the ops of each collection in held (topic → the version the page holds), with what the
-// page lacks first; unknown topics are ignored.
-func (s *Session) subscribe(held map[string]int64) error {
+// page lacks first, and the cells and regions among the other topics. sendCells sends a newly used cell its value;
+// a connect does not, since its initial frames carry every used cell.
+func (s *Session) subscribe(held map[string]int64, sendCells bool) error {
 	var first error
 	for topic, ver := range held {
 		s.world.mu.RLock()
 		c, ok := s.world.collections[topic]
 		s.world.mu.RUnlock()
 		if !ok {
+			// a cell or region: a cell newly used is sent its value, which a frame the page already has drops
+			if s.use(topic) && sendCells {
+				s.sendCell(topic)
+			}
 			continue
 		}
 		s.cellMu.Lock()
@@ -559,4 +600,22 @@ func (s *Session) subscribe(held map[string]int64) error {
 		}
 	}
 	return first
+}
+
+// sendCell offers the current value of s's cell topic, a session cell or else a world cell, if there is one.
+func (s *Session) sendCell(topic string) {
+	s.cellMu.Lock()
+	c, ok := s.cells[topic]
+	s.cellMu.Unlock()
+	if !ok {
+		s.world.mu.RLock()
+		c, ok = s.world.cells[topic]
+		s.world.mu.RUnlock()
+	}
+	if !ok {
+		return
+	}
+	if body, version := c.snapshot(); body != nil {
+		s.offer(event{kind: KindCell, topic: topic, body: body, version: version})
+	}
 }

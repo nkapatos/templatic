@@ -38,7 +38,7 @@ func cachedHTML(cached []event) string {
 
 func TestTakeoverKeepsSwapsInTheCoalesceWindow(t *testing.T) {
 	w := NewWorld(WithCoalesceWindow(time.Hour))
-	s := &Session{world: w, sid: "h1"}
+	s := &Session{world: w, sid: "h1", allTopics: true}
 	c1, done := startLoop(t, s, io.Discard)
 
 	s.offer(swapEv("t", "A"))
@@ -59,7 +59,7 @@ func TestTakeoverKeepsSwapsInTheCoalesceWindow(t *testing.T) {
 
 func TestTakeoverKeepsSwapsOfAFailedWrite(t *testing.T) {
 	w := NewWorld(WithCoalesceWindow(time.Millisecond))
-	s := &Session{world: w, sid: "h2"}
+	s := &Session{world: w, sid: "h2", allTopics: true}
 	var armed atomic.Bool
 	entered, release := make(chan struct{}), make(chan struct{})
 	wr := writerFunc(func(p []byte) (int, error) {
@@ -107,7 +107,7 @@ func TestTakeoverWaitIsBounded(t *testing.T) {
 	t.Cleanup(func() { attachWait = old })
 
 	w := NewWorld()
-	s := &Session{world: w, sid: "h3"}
+	s := &Session{world: w, sid: "h3", allTopics: true}
 	s.attach(newConn(func() {}))
 	_, stale, resumed, _ := s.attach(newConn(func() {}))
 	if !stale || !resumed {
@@ -117,7 +117,7 @@ func TestTakeoverWaitIsBounded(t *testing.T) {
 
 func TestTakeoverKeepsLatestPerTopic(t *testing.T) {
 	w := NewWorld(WithCoalesceWindow(time.Hour))
-	s := &Session{world: w, sid: "h4"}
+	s := &Session{world: w, sid: "h4", allTopics: true}
 	c1, _ := startLoop(t, s, io.Discard)
 	s.offer(swapEv("t", "old"))
 	waitFor(t, "loop to pull", func() bool { return len(c1.inbox) == 0 })

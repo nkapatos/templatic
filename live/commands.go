@@ -159,7 +159,7 @@ func (h *commandsHandler) subscribe(w http.ResponseWriter, req commandRequest) {
 		http.Error(w, "live: unknown session; (re)connect the stream first", http.StatusConflict)
 		return
 	}
-	if err := s.subscribe(req.Subscribe); err != nil {
+	if err := s.subscribe(req.Subscribe, true); err != nil {
 		http.Error(w, "live: subscribe failed", http.StatusInternalServerError)
 		return
 	}

@@ -142,7 +142,7 @@ func TestSwapRejectsNilAndValidatesTopic(t *testing.T) {
 }
 
 func newTestSession(t *testing.T, w *World, sid string) *Session {
-	s := &Session{sid: sid, world: w, conn: newConn(func() {})}
+	s := &Session{sid: sid, world: w, conn: newConn(func() {}), allTopics: true}
 	w.mu.Lock()
 	w.sessions[sid] = s
 	w.mu.Unlock()

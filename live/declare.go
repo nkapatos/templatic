@@ -267,6 +267,9 @@ func (r *SessionRegion[M]) Refresh(w *World, model func(s *Session) (M, bool)) e
 	render := r.mustRender()
 	var first error
 	for _, s := range w.liveSessions() {
+		if !s.uses(r.topic) {
+			continue
+		}
 		// stamped before the model is read, so a swap of newer state made meanwhile wins
 		gen := w.swapGen.Add(1)
 		m, ok := model(s)

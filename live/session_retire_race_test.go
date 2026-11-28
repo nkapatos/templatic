@@ -4,7 +4,7 @@ import "testing"
 
 func TestAttachRefusesARetiredSession(t *testing.T) {
 	w := NewWorld()
-	s := &Session{world: w, sid: "r1"}
+	s := &Session{world: w, sid: "r1", allTopics: true}
 	w.mu.Lock()
 	w.sessions["r1"] = s
 	w.mu.Unlock()
@@ -21,7 +21,7 @@ func TestAttachRefusesARetiredSession(t *testing.T) {
 
 func TestHandlerRetriesAfterRetiredSession(t *testing.T) {
 	w := NewWorld()
-	retiring := &Session{world: w, sid: "r2"}
+	retiring := &Session{world: w, sid: "r2", allTopics: true}
 	retiring.retired = true
 	w.mu.Lock()
 	w.sessions["r2"] = retiring

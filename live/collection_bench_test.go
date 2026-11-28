@@ -20,7 +20,7 @@ type viewer struct {
 }
 
 func attachViewer(w *World, sid string) *viewer {
-	s := &Session{world: w, sid: sid}
+	s := &Session{world: w, sid: sid, allTopics: true}
 	w.mu.Lock()
 	w.sessions[sid] = s
 	w.mu.Unlock()
@@ -76,7 +76,7 @@ func BenchmarkCollectionUpsert(b *testing.B) {
 				vs := make([]*viewer, viewers)
 				for i := range vs {
 					vs[i] = attachViewer(w, fmt.Sprint("v", i))
-					_ = vs[i].s.subscribe(map[string]int64{"log": int64(c.Version())})
+					_ = vs[i].s.subscribe(map[string]int64{"log": int64(c.Version())}, true)
 				}
 				b.ReportAllocs()
 				n := 0
@@ -106,7 +106,7 @@ func BenchmarkCollectionMemory(b *testing.B) {
 		vs := make([]*viewer, viewers)
 		for i := range vs {
 			vs[i] = attachViewer(w, fmt.Sprint("v", i))
-			_ = vs[i].s.subscribe(map[string]int64{"log": int64(c.Version())})
+			_ = vs[i].s.subscribe(map[string]int64{"log": int64(c.Version())}, true)
 		}
 		withViewers := heapInUse()
 		b.ReportMetric(float64(withItems-base)/items, "B/item")
@@ -135,7 +135,7 @@ func BenchmarkCollectionReconnectStorm(b *testing.B) {
 				_ = c.Upsert(row{ID: "bump"}) // a new version, so the cached reset is rebuilt once per round
 				var wg sync.WaitGroup
 				for _, v := range vs {
-					wg.Go(func() { _ = v.s.subscribe(map[string]int64{"log": 0}) })
+					wg.Go(func() { _ = v.s.subscribe(map[string]int64{"log": 0}, true) })
 				}
 				wg.Wait()
 			}
@@ -156,7 +156,7 @@ func TestCollectionSessionsLeaveNoTrace(t *testing.T) {
 			vs := make([]*viewer, 20)
 			for i := range vs {
 				vs[i] = attachViewer(w, fmt.Sprintf("r%d-%d", round, i))
-				_ = vs[i].s.subscribe(map[string]int64{"log": int64(c.Version()) - 3})
+				_ = vs[i].s.subscribe(map[string]int64{"log": int64(c.Version()) - 3}, true)
 			}
 			_ = c.Upsert(row{ID: fmt.Sprint("round", round)})
 			for i, v := range vs {

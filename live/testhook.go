@@ -27,6 +27,7 @@ func init() {
 		s.setReportedURL(r.URL.RequestURI())
 		_, cancel := context.WithCancel(context.Background())
 		var mu sync.Mutex
+		s.allTopics = true
 		c := newConn(cancel)
 		c.finish()
 		s.attach(c)
@@ -64,7 +65,7 @@ func init() {
 				s.detach(current())
 				s.retire()
 			},
-			Subscribe: s.subscribe,
+			Subscribe: func(held map[string]int64) error { return s.subscribe(held, true) },
 			Drop:      func() { s.detach(current()) },
 			Resume: func() bool {
 				_, cancel := context.WithCancel(context.Background())
