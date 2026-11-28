@@ -74,7 +74,7 @@ func TestClientModulesUnderAGlobLikeRoot(t *testing.T) {
 	if err := os.MkdirAll(mods, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(mods, "charts.ts"), []byte("export {};\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(mods, "charts.ts"), []byte("console.log('charts');\nexport {};\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Run(Options{Root: root}); err != nil {
