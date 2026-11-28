@@ -64,7 +64,9 @@ func main() {
 		func(_ *http.Request, _ *live.Session, in components.SetIn) (string, error) { return "/", b.set(in) },
 		nil))
 	mux.Handle("POST /report", components.Report.Form(w,
-		func(_ *http.Request, _ *live.Session, in components.ReportIn) (string, error) { return "/", b.report(in) },
+		func(_ *http.Request, _ *live.Session, in components.ReportIn) (string, error) {
+			return "/", b.report(in)
+		},
 		func(rw http.ResponseWriter, r *http.Request, err error) {
 			report(rw, r, ui.Failed(r, err), http.StatusUnprocessableEntity)
 		}))
