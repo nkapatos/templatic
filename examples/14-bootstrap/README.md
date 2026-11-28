@@ -63,9 +63,11 @@ Open it in two windows and press a status button in one.
   its field errors in the modal. `client/modal.ts` preselects the
   service from the trigger's `data-service` (`show.bs.modal`) and hides
   the modal and resets the form when the command succeeds.
-  `client/app.css` gives templatic's error markup (`aria-invalid`,
-  `[data-tc-field-error]`) Bootstrap's invalid look: `ui.FieldError` takes
-  no class ([#54](https://github.com/nkapatos/templatic/issues/54)).
+  The error slots take Bootstrap's class
+  (`ui.FieldError("note", ui.Class("invalid-feedback"))`), and the inputs
+  `ui.FieldAttrs(ctx, "note")`, so a refusal without JavaScript marks them
+  too. Bootstrap shows its invalid look for `.is-invalid`; `client/app.css`
+  gives it to `aria-invalid` and to a filled slot instead.
 - **A button group is one form.** Each card's status buttons are submit
   buttons of one `ui.FormFor(Set, "/set")` with `name="status"`, so the
   pressed button's value is the input, with JS (the runtime sends the

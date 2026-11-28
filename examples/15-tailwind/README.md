@@ -79,9 +79,9 @@ Ctrl-C stops both watchers and the app.
   `ui.FieldError` style the message.
 - **Without JavaScript** the form POSTs to `/add` and the page reloads
   with the new count and badge, styled the same. A refused step renders
-  the page again with the message, but the field carries no
-  `aria-invalid`, so it gets no outline
-  ([#59](https://github.com/nkapatos/templatic/issues/59)).
+  the page again with the message, and `ui.FieldAttrs(ctx, "n")` marks
+  the input `aria-invalid` as the runtime does, so it gets the same
+  outline.
 
 ## Files
 

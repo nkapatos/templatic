@@ -67,8 +67,8 @@ the other. Then turn JavaScript off and sign up again.
   `ui.FormFor(Register, "/signup", failed)`, and `Register.Form` in
   `main.go` takes its POST: a refusal renders the page again with 422,
   the errors in `ui.FieldError` and the typed values back; a success
-  redirects to `/signup`. The refused input is not marked `aria-invalid`
-  without JavaScript ([#59](https://github.com/nkapatos/templatic/issues/59)).
+  redirects to `/signup`. `ui.FieldAttrs` marks the refused inputs
+  `aria-invalid` without JavaScript, as the island does with it.
   The island runs its signup once however often it is submitted: it keeps
   a key from `submitKey()` and passes it as `send(…, { once: key })`
   until a submit succeeds, so a repeat gets the first outcome.
