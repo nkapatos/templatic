@@ -1,0 +1,25 @@
+package components
+
+import "strconv"
+
+// The body is the fallback: what the first paint and a page without
+// JavaScript show. The lit element replaces it when it mounts.
+//
+//templatic:island tag=traffic-chart props=ChartProps variant=lit bind=series:traffic.series bind=window:traffic.window
+templ TrafficChart(props ChartProps) {
+	<div class="fallback">
+		if n := len(props.Series); n > 0 {
+			<p class="latest">{ strconv.Itoa(props.Series[n-1]) } <span>req/s now</span></p>
+			<table>
+				<caption>Last { strconv.Itoa(min(n, 5)) } seconds, newest first</caption>
+				<tbody>
+					for i := n - 1; i >= max(n-5, 0); i-- {
+						<tr><th>{ strconv.Itoa(i-n+1) }s</th><td>{ strconv.Itoa(props.Series[i]) }</td></tr>
+					}
+				</tbody>
+			</table>
+		} else {
+			<p>No traffic yet.</p>
+		}
+	</div>
+}

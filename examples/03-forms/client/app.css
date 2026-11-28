@@ -1,0 +1,23 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; color: #1d2421; }
+header { display: flex; align-items: center; gap: 1.5rem; border-bottom: 1px solid #d6ddd9; padding-bottom: 1rem; }
+.brand { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: inherit; text-decoration: none; }
+.brand::before { content: ""; width: 1.75rem; height: 1.75rem; background: url(./logo.svg) center / contain no-repeat; }
+a { color: #2f6f4f; }
+footer { margin-top: 3rem; color: #6b7570; font-size: .875rem; }
+
+.count { color: #6b7570; margin-bottom: .25rem; }
+.books { padding: 0; list-style: none; }
+.books li { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #eef1ef; }
+.books li span { color: #6b7570; font-size: .875rem; }
+.books .fav { color: #9a6b00; }
+.books .tag { background: #eef1ef; border-radius: .25rem; padding: 0 .4rem; }
+
+form { display: grid; gap: .75rem; max-width: 24rem; }
+label { display: grid; gap: .2rem; }
+label.check { display: flex; gap: .4rem; align-items: center; }
+fieldset { border: 1px solid #d6ddd9; border-radius: .25rem; display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+input, select, button { font: inherit; }
+button { justify-self: start; }
+[aria-invalid="true"] { outline: 2px solid #c62828; }
+[data-tc-field-error], [data-tc-form-error] { color: #c62828; font-size: .875rem; }
+[data-tc-field-error]:empty, [data-tc-form-error]:empty { display: none; }

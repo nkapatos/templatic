@@ -1,0 +1,33 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+templ Home() {
+	@Layout("Home", "/") {
+		<h1>Plain pages</h1>
+		<p>
+			Every page here is a templ component rendered by a plain
+			<code>net/http</code> handler. templatic adds one thing: the
+			bundled, fingerprinted CSS and images, linked from the manifest.
+		</p>
+		<figure>
+			// Asset resolves a bundled file by its source path to its hashed URL.
+			<img src={ templatic.Asset("client/logo.svg") } alt="The logo, served from the bundle"/>
+			<figcaption>This image's URL carries its content hash.</figcaption>
+		</figure>
+	}
+}
+
+templ About() {
+	@Layout("About", "/about") {
+		<h1>About</h1>
+		<p>A hashed file never changes, so it is cached for a year. A deploy that changes it gets a new name.</p>
+	}
+}
+
+templ NotFound() {
+	@Layout("Not found", "") {
+		<h1>Not found</h1>
+		<p><a href="/">Back home</a></p>
+	}
+}

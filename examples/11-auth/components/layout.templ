@@ -1,0 +1,32 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+templ Layout(title string, u *User) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · auth</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+		</head>
+		<body>
+			<header>
+				<a class="brand" href="/">auth</a>
+				if u != nil {
+					<span class="who">{ u.Name } · <b>{ u.Role() }</b></span>
+					// A POST, not a link: Boot's Prefetch would fire a GET link.
+					<form method="post" action="/logout" class="logout">
+						<button type="submit">Log out</button>
+					</form>
+				}
+			</header>
+			<main>
+				{ children... }
+			</main>
+			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+		</body>
+	</html>
+}

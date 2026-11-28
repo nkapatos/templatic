@@ -1,0 +1,21 @@
+{
+	"name": "templui",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"css": "tailwindcss -i tailwind.css -o client/tailwind.out.css",
+		"generate": "npm run css && go tool shadcn-templ bundle && go tool templatic generate",
+		"dev": "npm run css && concurrently -k -n css,js,app \"npm run css -- --watch=always\" \"go tool shadcn-templ bundle --watch\" \"TC_MODE=dev go tool templatic dev -exec 'go run .'\"",
+		"check-ts": "go tool templatic check-ts"
+	},
+	"dependencies": {
+		"idiomorph": "0.8.0",
+		"lit": "3.3.3"
+	},
+	"devDependencies": {
+		"@tailwindcss/cli": "4.3.5",
+		"concurrently": "10.0.7",
+		"tailwindcss": "4.3.5",
+		"typescript": "7.0.2"
+	}
+}

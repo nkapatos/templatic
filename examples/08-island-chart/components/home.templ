@@ -1,0 +1,38 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/ui"
+)
+
+templ Home(props ChartProps) {
+	@Layout("Traffic") {
+		<h1>Requests per second</h1>
+		<p>
+			The server adds a point every second and keeps the last 60. Every
+			open page draws the same series.
+		</p>
+		@TrafficChartIsland(props)
+		<p class="actions">
+			Show the last
+			for _, n := range Windows {
+				@ui.Button(SetWindow, WindowIn{Points: n}, ui.Class("secondary")) {
+					{ strconv.Itoa(n) }
+				}
+			}
+			points
+		</p>
+		<noscript>Without JavaScript this page shows the traffic at load time, and the buttons do nothing.</noscript>
+	}
+}
+
+templ About() {
+	@Layout("About") {
+		<h1>About</h1>
+		<p>
+			This page has no island, so it loads no chart code. Compare the
+			network panel with the chart page.
+		</p>
+	}
+}

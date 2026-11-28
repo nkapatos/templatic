@@ -1,0 +1,8 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; color: #1d2421; }
+footer { margin-top: 3rem; color: #6b7570; font-size: .875rem; }
+.level { font-size: 3rem; font-weight: 600; margin: 1rem 0 .5rem; font-variant-numeric: tabular-nums; }
+.level .max { margin-left: .25rem; font-size: 1.25rem; font-weight: 400; color: #6b7570; }
+meter { width: 100%; height: 1.5rem; }
+.actions { display: flex; gap: .5rem; margin-top: 1rem; }
+button { font: inherit; padding: .4rem 1rem; border: 1px solid #2f6f4f; border-radius: .375rem; background: #2f6f4f; color: #fff; cursor: pointer; }
+button.secondary { background: #fff; color: #2f6f4f; }

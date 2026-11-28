@@ -1,0 +1,88 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+templ Page(rows *live.Cell[int], last *live.Cell[string], r Result) {
+	@Layout("Orders") {
+		<h1>Orders</h1>
+		<p class="muted">
+			Rows: <strong>@ui.Cell(rows)</strong>, last update: <strong>@ui.Cell(last)</strong>.
+			The server changes a few orders every few seconds; your page, sort and
+			search stay as they are.
+		</p>
+		// Outside the region, so neither a swap nor a refresh morphs what is
+		// being typed. Without JS it GETs this page; with JS the search hook
+		// raises Navigate.
+		<form class="search" method="get" action="/" { ui.Hook("search", nil)... }>
+			<input type="hidden" name="sort" value={ r.View.Sort }/>
+			<input type="hidden" name="dir" value={ r.View.Dir }/>
+			<input type="search" name="q" value={ r.View.Q } placeholder="Customer or order number" aria-label="Search orders"/>
+			<button type="submit">Search</button>
+		</form>
+		// First paint of the region; Navigate and the refresh loop swap it.
+		@TableRegion.Render(r)
+	}
+}
+
+//templatic:region topic-of=TableTopic
+templ Table(r Result) {
+	<table>
+		<thead>
+			<tr>
+				for _, c := range Columns {
+					<th aria-sort={ ariaSort(r.View, c.Key) } class={ "col-" + c.Key }>
+						@ui.Link(Navigate, r.View.SortedBy(c.Key), r.View.SortedBy(c.Key).URL()) {
+							{ c.Label }
+						}
+					</th>
+				}
+			</tr>
+		</thead>
+		<tbody>
+			for _, o := range r.Rows {
+				<tr class={ templ.KV("fresh", !r.Fresh.IsZero() && o.Updated.Equal(r.Fresh)) }>
+					<td class="col-updated">{ o.Updated.Format("15:04:05") }</td>
+					<td class="col-id">#{ strconv.Itoa(o.ID) }</td>
+					<td>{ o.Customer }</td>
+					<td><span class={ "status", "status-" + o.Status }>{ o.Status }</span></td>
+					<td class="col-amount">{ money(o.Amount) }</td>
+				</tr>
+			}
+			if len(r.Rows) == 0 {
+				<tr><td colspan="5" class="muted">No orders match.</td></tr>
+			}
+		</tbody>
+	</table>
+	<nav class="pager" aria-label="Pages">
+		if r.View.Page > 1 {
+			@ui.Link(Navigate, r.View.OnPage(r.View.Page-1), r.View.OnPage(r.View.Page-1).URL(), ui.Attrs(templ.Attributes{"rel": "prev"})) {
+				Previous
+			}
+		} else {
+			<span class="muted">Previous</span>
+		}
+		<span>Page { strconv.Itoa(r.View.Page) } of { strconv.Itoa(r.Pages) } · { strconv.Itoa(r.Total) } orders</span>
+		if r.View.Page < r.Pages {
+			@ui.Link(Navigate, r.View.OnPage(r.View.Page+1), r.View.OnPage(r.View.Page+1).URL(), ui.Attrs(templ.Attributes{"rel": "next"})) {
+				Next
+			}
+		} else {
+			<span class="muted">Next</span>
+		}
+	</nav>
+}
+
+func ariaSort(v View, col string) string {
+	if v.Sort != col {
+		return "none"
+	}
+	if v.Dir == "asc" {
+		return "ascending"
+	}
+	return "descending"
+}

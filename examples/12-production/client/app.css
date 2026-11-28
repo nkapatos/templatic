@@ -1,0 +1,8 @@
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; color: #1d2421; }
+footer { margin-top: 3rem; color: #6b7570; font-size: .875rem; }
+.count { font-size: 3rem; font-weight: 600; margin: 1rem 0; font-variant-numeric: tabular-nums; }
+input { font: inherit; width: 5rem; }
+button { font: inherit; padding: .3rem 1rem; }
+[aria-invalid="true"] { outline: 2px solid #c62828; }
+[data-tc-field-error], [data-tc-form-error] { display: block; color: #c62828; }
+[data-tc-field-error]:empty, [data-tc-form-error]:empty { display: none; }

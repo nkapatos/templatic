@@ -1,0 +1,36 @@
+package components
+
+import (
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+templ Home(level *live.Cell[int]) {
+	@Layout("Tank") {
+		<h1>One shared tank</h1>
+		<p>
+			The server drains the tank by one every second. Anyone can fill it.
+			Every open page shows the same level.
+		</p>
+		<p class="level">
+			// Text: the runtime replaces the span's text on every change.
+			@ui.Cell(level)
+			<span class="max">/ 100</span>
+		</p>
+		// Attribute: the same value drives the meter's value attribute.
+		<meter min="0" max="100" low="20" high="80" optimum="100" { ui.CellAttr(level, "value")... }></meter>
+		<p class="actions">
+			// Buttons carry a fixed input; no form, no field.
+			@ui.Button(Fill, FillIn{Amount: 10}) {
+				Fill 10
+			}
+			@ui.Button(Fill, FillIn{Amount: 50}) {
+				Fill 50
+			}
+			@ui.Button(Empty, struct{}{}, ui.Class("secondary")) {
+				Empty
+			}
+		</p>
+		<noscript>Without JavaScript this page shows the level at load time, and the buttons do nothing.</noscript>
+	}
+}

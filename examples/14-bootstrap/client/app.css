@@ -1,0 +1,5 @@
+/* Bootstrap's look for templatic's form errors: the runtime and ui.Failed
+   mark fields with aria-invalid and fill [data-tc-field-error] slots. */
+.form-control[aria-invalid="true"], .form-select[aria-invalid="true"] { border-color: var(--bs-form-invalid-border-color); }
+[data-tc-field-error], [data-tc-form-error] { display: block; margin-top: .25rem; font-size: .875em; color: var(--bs-form-invalid-color); }
+[data-tc-field-error]:empty, [data-tc-form-error]:empty { display: none; }

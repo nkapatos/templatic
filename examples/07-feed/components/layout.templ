@@ -1,0 +1,38 @@
+package components
+
+import "github.com/nkapatos/templatic"
+
+// Layout is the document; current is the open room, empty elsewhere.
+templ Layout(title, current string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · feed</title>
+			<link rel="icon" href="/static/favicon.svg"/>
+			@templatic.Head(templatic.HeadOptions{Assets: "/_templatic"})
+		</head>
+		<body>
+			<header>
+				<a class="brand" href="/">feed</a>
+				<nav>
+					for _, r := range Rooms {
+						<a
+							href={ templ.SafeURL("/rooms/" + r) }
+							if r == current {
+								aria-current="page"
+							}
+						>#{ r }</a>
+					}
+				</nav>
+			</header>
+			<main>
+				{ children... }
+			</main>
+			<footer>Posting works with JavaScript turned off; the feed then updates on reload.</footer>
+			@templatic.Boot(templatic.BootOptions{Live: "/live", Assets: "/_templatic"})
+		</body>
+	</html>
+}
+

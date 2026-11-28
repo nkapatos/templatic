@@ -1,0 +1,107 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// Home lists the books and offers the new-book form; failed is nil on a
+// plain render and ui.Failed after a refused no-JS POST.
+templ Home(list *live.Region, failed ui.Option) {
+	@Layout("Reading list") {
+		<h1>Reading list</h1>
+		@list
+		<h2>New book</h2>
+		<div { ui.Hook("reset-on-ok", Save.Name())... }>
+			@ui.FormFor(Save, "/books", failed) {
+				@bookFields(Book{})
+				<button type="submit">Add book</button>
+			}
+		</div>
+	}
+}
+
+// Edit is the form for one book, above the live list.
+templ Edit(list *live.Region, b Book, failed ui.Option) {
+	@Layout("Edit " + b.Title) {
+		<h1>Edit “{ b.Title }”</h1>
+		@ui.FormFor(Save, "/books/"+b.ID, failed) {
+			<input type="hidden" name="id" value={ b.ID }/>
+			@bookFields(b)
+			<button type="submit">Save</button>
+			<a href="/">Back to the list</a>
+		}
+		<h2>All books</h2>
+		@list
+	}
+}
+
+// NotFound is the 404 page.
+templ NotFound(message string) {
+	@Layout("Not found") {
+		<h1>Not found</h1>
+		<p>{ message }</p>
+		<p><a href="/">Back to the list</a></p>
+	}
+}
+
+// BookList is the books region's markup.
+templ BookList(books []Book) {
+	<p class="count">{ strconv.Itoa(len(books)) } books</p>
+	<ul class="books">
+		for _, b := range books {
+			<li>
+				<a href={ templ.SafeURL("/books/" + b.ID) }>{ b.Title }</a>
+				<span>{ strconv.Itoa(b.Pages) } pages · { b.Shelf }</span>
+				if b.Favorite {
+					<span class="fav">favorite</span>
+				}
+				for _, t := range b.Tags {
+					<span class="tag">{ t }</span>
+				}
+			</li>
+		}
+	</ul>
+}
+
+// bookFields are the inputs both forms share. Each value is the submitted
+// one after a refused POST, else the book's.
+templ bookFields(b Book) {
+	@ui.FormError()
+	<label>
+		Title
+		<input name="title" value={ ui.FieldValue(ctx, "title", b.Title) }/>
+		@ui.FieldError("title")
+	</label>
+	<label>
+		Pages
+		<input name="pages" type="number" value={ ui.FieldValue(ctx, "pages", pagesText(b.Pages)) }/>
+		@ui.FieldError("pages")
+	</label>
+	<label>
+		Shelf
+		<select name="shelf">
+			<option value="">choose…</option>
+			for _, s := range Shelves {
+				<option value={ s } selected?={ ui.FieldValue(ctx, "shelf", b.Shelf) == s }>{ s }</option>
+			}
+		</select>
+		@ui.FieldError("shelf")
+	</label>
+	<label class="check">
+		<input name="favorite" type="checkbox" value="true" checked?={ checked(ctx, "favorite", "true", favoriteValues(b)) }/>
+		Favorite (finished books only)
+	</label>
+	<fieldset>
+		<legend>Tags</legend>
+		for _, t := range Tags {
+			<label class="check">
+				<input name="tags" type="checkbox" value={ t } checked?={ checked(ctx, "tags", t, b.Tags) }/>
+				{ t }
+			</label>
+		}
+		@ui.FieldError("tags")
+	</fieldset>
+}

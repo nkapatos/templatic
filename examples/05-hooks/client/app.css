@@ -1,0 +1,27 @@
+/* The theme is a data attribute on <html>, painted by the server from the
+   cookie; the theme hook changes it in place. */
+:root { --bg: #fff; --fg: #1d2421; --muted: #6b7570; --line: #d6ddd9; --accent: #2f6f4f; --card: #f4f7f5; color-scheme: light; }
+:root[data-theme="dark"] { --bg: #151a18; --fg: #e3e9e6; --muted: #98a39e; --line: #33403a; --accent: #7cc39c; --card: #1e2522; color-scheme: dark; }
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; background: var(--bg); color: var(--fg); }
+a { color: var(--accent); }
+body > header { display: flex; align-items: center; gap: 1.5rem; border-bottom: 1px solid var(--line); padding-bottom: 1rem; }
+.brand { font-weight: 600; color: inherit; text-decoration: none; }
+.theme { margin-left: auto; }
+button, summary { font: inherit; cursor: pointer; }
+
+.menu { position: relative; }
+.menu summary { list-style: none; padding: .25rem .75rem; border: 1px solid var(--line); border-radius: .375rem; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu ul { position: absolute; z-index: 1; margin: .25rem 0 0; padding: .5rem 0; min-width: 10rem; list-style: none; background: var(--bg); border: 1px solid var(--line); border-radius: .375rem; box-shadow: 0 4px 12px #0002; }
+.menu li a { display: block; padding: .25rem .75rem; }
+
+.tip { margin-top: 2rem; padding: 1rem 1.25rem; background: var(--card); border: 1px solid var(--line); border-radius: .5rem; }
+.tip header { display: flex; align-items: center; justify-content: space-between; }
+.tip h2 { margin: 0; font-size: 1.125rem; }
+
+/* No padding on the dialog itself: a click with the dialog as its target is
+   on the backdrop. */
+dialog { padding: 0; border: 1px solid var(--line); border-radius: .5rem; background: var(--bg); color: var(--fg); max-width: 32rem; }
+dialog::backdrop { background: #0006; }
+.dialog-body { padding: 1rem 1.5rem; }
+.dialog-body h2 { margin-top: 0; }

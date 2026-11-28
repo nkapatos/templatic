@@ -1,0 +1,54 @@
+package components
+
+import (
+	"strconv"
+
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// The body is the fallback: the newest rows as plain HTML. The lit element
+// replaces it with a virtual list of every row when it mounts.
+//
+//templatic:island tag=log-list props=LogProps variant=lit bind=rows:log.rows
+templ LogList(props LogProps) {
+	<div class="fallback">
+		{{ rows := props.Rows.Items() }}
+		<p>{ strconv.Itoa(len(rows)) } rows at load time; the newest 20 are below. Scrolling through all of them needs JavaScript.</p>
+		@logRows(rows[:min(20, len(rows))])
+	</div>
+}
+
+templ logRows(rows []Row) {
+	<ol class="log">
+		for _, r := range rows {
+			<li class={ "row", r.Level }>
+				<span class="id">#{ strconv.Itoa(r.ID) }</span>
+				<span class="at">{ r.At }</span>
+				<span class="level">{ r.Level }</span>
+				<span class="text">{ r.Text }</span>
+			</li>
+		}
+	</ol>
+}
+
+// LogPage is the log with the buttons that set the server's add rate.
+templ LogPage(props LogProps, rate *live.Cell[int]) {
+	@Layout("Log") {
+		<h1>Live log</h1>
+		<p>
+			The server keeps the last { strconv.Itoa(LogSize) } rows and adds
+			<strong>@ui.Cell(rate)</strong> a second. Each new row is sent on
+			its own, to the pages that show the log.
+		</p>
+		<p class="actions">
+			Rows a second:
+			for _, n := range Rates {
+				@ui.Button(SetRate, RateIn{PerSecond: n}, ui.Class("secondary")) {
+					{ strconv.Itoa(n) }
+				}
+			}
+		</p>
+		@LogListIsland(props)
+	}
+}

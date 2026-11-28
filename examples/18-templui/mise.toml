@@ -1,0 +1,11 @@
+[tasks.generate]
+description = "Tailwind's CSS, templUI's script bundle, then templ glue, client runtime and bundles (prod)"
+run = "npm run generate"
+
+[tasks.dev]
+description = "Tailwind's and templUI's watchers beside templatic dev: rebuild on change, restart on .go changes, reload open pages"
+run = "npm run dev"
+
+[tasks.check]
+description = "typecheck the client and vet the server"
+run = ["go tool templatic check-ts", "go vet ./..."]

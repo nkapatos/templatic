@@ -1,0 +1,98 @@
+package components
+
+import (
+	"github.com/nkapatos/templatic/live"
+	"github.com/nkapatos/templatic/ui"
+)
+
+// Home is the board. The modal and the legend collapse hold state that
+// Bootstrap's JS keeps in the DOM, so they sit outside the board region.
+templ Home(board *live.Region, services []Service) {
+	@Layout("Board") {
+		<div class="d-flex align-items-center gap-2 mb-3">
+			<h1 class="h3 mb-0 me-auto">Status board</h1>
+			// Popovers have no data API: the hook creates and disposes it.
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-secondary"
+				data-bs-title="Live board"
+				data-bs-content="Every open page shows the same board. The server measures latency every few seconds."
+				{ ui.Hook("bs-popover", nil)... }
+			>About</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#legend" aria-expanded="false" aria-controls="legend">Legend</button>
+			// Without JS the link opens the report page; with JS the data
+			// API opens the modal instead.
+			<a class="btn btn-sm btn-primary" href="/report" data-bs-toggle="modal" data-bs-target="#report-modal">Report incident</a>
+		</div>
+		<div class="collapse" id="legend">
+			<div class="card card-body mb-3">
+				<p class="mb-0">
+					<span class={ "badge", badgeClass("up") }>up</span>
+					<span class={ "badge", badgeClass("degraded") }>degraded</span>
+					<span class={ "badge", badgeClass("down") }>down</span>
+					: hover or focus a badge for when it changed.
+				</p>
+			</div>
+		</div>
+		@board
+		<div class="modal fade" id="report-modal" tabindex="-1" aria-labelledby="report-title" aria-hidden="true" { ui.Hook("report-modal", Report.Name())... }>
+			<div class="modal-dialog">
+				<div class="modal-content">
+					@ui.FormFor(Report, "/report") {
+						<div class="modal-header">
+							<h2 class="modal-title fs-5" id="report-title">Report an incident</h2>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							@reportFields(services, "")
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+							<button type="submit" class="btn btn-danger">Report</button>
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	}
+}
+
+// ReportPage is the report form as a page: the no-JS path of the modal.
+// failed is nil on a plain render and ui.Failed after a refused POST.
+templ ReportPage(services []Service, selected string, failed ui.Option) {
+	@Layout("Report") {
+		<h1 class="h3 mb-3">Report an incident</h1>
+		@ui.FormFor(Report, "/report", failed) {
+			@reportFields(services, selected)
+			<button type="submit" class="btn btn-danger">Report</button>
+			<a class="btn btn-link" href="/">Back to the board</a>
+		}
+	}
+}
+
+// NotFound is the 404 page.
+templ NotFound() {
+	@Layout("Not found") {
+		<h1 class="h3">Not found</h1>
+		<p><a href="/">Back to the board</a></p>
+	}
+}
+
+templ reportFields(services []Service, selected string) {
+	@ui.FormError()
+	<div class="mb-3">
+		<label class="form-label" for="report-service">Service</label>
+		<select class="form-select" id="report-service" name="service">
+			<option value="">choose…</option>
+			for _, s := range services {
+				<option value={ s.ID } selected?={ ui.FieldValue(ctx, "service", selected) == s.ID }>{ s.Name }</option>
+			}
+		</select>
+		@ui.FieldError("service")
+	</div>
+	<div class="mb-3">
+		<label class="form-label" for="report-note">What happened</label>
+		<input class="form-control" id="report-note" name="note" value={ ui.FieldValue(ctx, "note", "") }/>
+		@ui.FieldError("note")
+	</div>
+}
