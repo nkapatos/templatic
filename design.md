@@ -111,6 +111,9 @@ contracts apps rely on:
   that is the app's HTTP policy (rule 3). The live stream flushes every batch
   of frames as it writes it and opts out of proxy buffering, so the app's own
   compression does not hold it back.
+  [examples/12-production](examples/12-production) is the recipe to copy:
+  compression that skips the stream, cache headers, timeouts above the
+  heartbeat, HTTP/2 behind a proxy, graceful shutdown.
 - **Islands are marked with a pragma** directly above the component. It
   carries what a naming convention cannot: a stable element name independent
   of the Go name, a props struct, the island's variant and its bindings to
