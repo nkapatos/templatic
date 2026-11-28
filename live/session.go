@@ -159,6 +159,22 @@ func (s *Session) take(c *connState, ev event) event {
 	return c.takeLocked(ev)
 }
 
+// latestFilter tracks what one connection has sent: publishes can reach the inbox out of order, so per topic a
+// cell or swap older than the last one sent is dropped.
+type latestFilter map[string]uint64
+
+func (f latestFilter) newer(ev event) bool {
+	if !latestWins(ev.kind) {
+		return true
+	}
+	key := latestKey(ev)
+	if last, ok := f[key]; ok && ev.version <= last {
+		return false
+	}
+	f[key] = ev.version
+	return true
+}
+
 func (s *Session) stashLocked(ev event) {
 	if prev, ok := s.cache[ev.topic]; ok {
 		if ev.version >= prev.version {
@@ -367,19 +383,7 @@ func (s *Session) loop(ctx context.Context, c *connState, prelude []event, w io.
 		return err
 	}
 
-	// Publishes can reach the inbox out of order; per topic, what is older than the last frame written is dropped.
-	sent := map[string]uint64{}
-	newer := func(ev event) bool {
-		if !latestWins(ev.kind) {
-			return true
-		}
-		key := latestKey(ev)
-		if last, ok := sent[key]; ok && ev.version <= last {
-			return false
-		}
-		sent[key] = ev.version
-		return true
-	}
+	newer := latestFilter{}.newer
 
 	initial := append(s.world.snapshot(), s.snapshot()...)
 	initial = append(initial, prelude...)
