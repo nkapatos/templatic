@@ -32,7 +32,7 @@ func Action(name string, args any, opts ...Option) templ.Component {
 			if err != nil {
 				return err
 			}
-			if _, err := io.WriteString(w, ` data-tc-args="`+markup.EscapeAttr(string(enc))+`"`); err != nil {
+			if err := markup.WriteStrings(w, ` data-tc-args="`, markup.EscapeAttr(string(enc)), `"`); err != nil {
 				return err
 			}
 		}
@@ -93,7 +93,7 @@ func ActionLink(name string, args any, href string, opts ...LinkOption) templ.Co
 			if err != nil {
 				return err
 			}
-			if _, err := io.WriteString(w, ` data-tc-args="`+markup.EscapeAttr(string(enc))+`"`); err != nil {
+			if err := markup.WriteStrings(w, ` data-tc-args="`, markup.EscapeAttr(string(enc)), `"`); err != nil {
 				return err
 			}
 		}

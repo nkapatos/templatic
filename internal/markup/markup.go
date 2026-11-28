@@ -5,8 +5,19 @@ package markup
 import (
 	"encoding/json/v2"
 	"fmt"
+	"io"
 	"strings"
 )
+
+// WriteStrings writes each part to w in order, so callers need not concatenate first.
+func WriteStrings(w io.Writer, parts ...string) error {
+	for _, p := range parts {
+		if _, err := io.WriteString(w, p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // EscapeAttr escapes a value for a double-quoted HTML attribute context.
 func EscapeAttr(s string) string {

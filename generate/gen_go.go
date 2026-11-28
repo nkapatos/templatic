@@ -337,7 +337,7 @@ func writeGenGo(path string, templGo []byte, decls []string) (wrote bool, unreso
 	}
 
 	var b strings.Builder
-	b.WriteString(genGoHeader + "\npackage " + tf.Name.Name + "\n\nimport (\n")
+	fmt.Fprintf(&b, "%s\npackage %s\n\nimport (\n", genGoHeader, tf.Name.Name)
 	for _, im := range imps {
 		if im.name != "" {
 			fmt.Fprintf(&b, "\t%s %q\n", im.name, im.path)
@@ -345,7 +345,8 @@ func writeGenGo(path string, templGo []byte, decls []string) (wrote bool, unreso
 			fmt.Fprintf(&b, "\t%q\n", im.path)
 		}
 	}
-	b.WriteString(")\n\n" + body)
+	b.WriteString(")\n\n")
+	b.WriteString(body)
 	out, err := format.Source([]byte(b.String()))
 	if err != nil {
 		return false, nil, fmt.Errorf("generated Go does not format: %w", err)

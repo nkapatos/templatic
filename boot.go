@@ -10,6 +10,7 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/nkapatos/templatic/internal/markup"
 	"github.com/nkapatos/templatic/internal/pagestate"
 )
 
@@ -75,7 +76,7 @@ func Boot(o BootOptions) templ.Component {
 			}
 		}
 		if o.Prefetch {
-			if _, err := io.WriteString(w, `<script type="speculationrules"`+nonceAttr(ctx)+`>{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>`); err != nil {
+			if err := markup.WriteStrings(w, `<script type="speculationrules"`, nonceAttr(ctx), `>{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>`); err != nil {
 				return err
 			}
 		}
