@@ -140,16 +140,22 @@
 // # Wire
 //
 // The stream carries events of the kinds KindCell, KindSwap, KindOps,
-// KindReset, KindReady, KindResync and KindDev. Cell events carry a value and
-// swap events markup; ops and reset events carry a collection's changes or
-// its whole set at a version, as markup or as JSON items. Bursts of publishes are coalesced into one
-// flush. Cells and swaps are latest-wins per topic: a page never receives
-// one older than the last it got (a swap's age is when its state was read),
-// and a slow page holds one pending value per topic, not one per write. A session that loses its connection keeps its place for the resume
-// grace; a client that reconnects too late, whose session the server no
-// longer holds, or that cannot keep up receives a resync event instead of
-// incremental updates. [World.Dev] sends a development
-// notice to every session and is for the dev loop only.
+// KindReset, KindReady, KindResync, KindToken and KindDev. Cell events carry
+// a value and swap events markup; ops and reset events carry a collection's
+// changes or its whole set at a version, as markup or as JSON items. Bursts
+// of publishes are coalesced into one flush. Cells and swaps are latest-wins
+// per topic: a page never receives one older than the last it got (a swap's
+// age is when its state was read), and a slow page holds one pending value
+// per topic, not one per write.
+//
+// A session that loses its connection keeps its place for the resume grace.
+// Each attach sends the page a fresh token (KindToken) for its next
+// reconnect. A client that reconnects too late, whose session the server no
+// longer holds, that cannot keep up, or whose session the app ended
+// ([WithAdmit], [World.EndSessions], [WithMaxSessionAge]) receives a resync
+// event with the reason ([ReasonLost] and the other Reason constants) instead
+// of incremental updates. [World.Dev] sends a development notice to every
+// session and is for the dev loop only.
 //
 // Test code can drive a world without a network using
 // [github.com/nkapatos/templatic/live/livetest].

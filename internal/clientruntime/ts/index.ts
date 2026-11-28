@@ -3,7 +3,7 @@ import { scanHooks } from "./hooks";
 import { scan as scanIslands } from "./islands";
 import { tcState, type TcState } from "./tc";
 
-export { cell, on, onReady } from "./tc";
+export { cell, on, onReady, onSessionEnd } from "./tc";
 export type { Cell, LiveEvent, LiveRecord, TcEvents, TcState, Unsubscribe } from "./tc";
 export { collection } from "./data";
 export type { Collection, DataOp } from "./data";

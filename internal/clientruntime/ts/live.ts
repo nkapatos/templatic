@@ -6,7 +6,7 @@ import { catchUp } from "./subscribe";
 import { abandonPending } from "./commands";
 import { applyDev, type DevFrame } from "./dev";
 import { morphCallbacks, scanHooks } from "./hooks";
-import { bindsFor, emit, markReady, recordLive, setLatestCell, tcPhase } from "./tc";
+import { bindsFor, emit, endSession, markReady, recordLive, setLatestCell, setPageToken, tcPhase } from "./tc";
 
 /** WireEvent is one server event frame. */
 export interface WireEvent {
@@ -23,6 +23,10 @@ export interface WireEvent {
 	what?: string;
 	css?: Record<string, string>;
 	message?: string;
+	/** reason says why a resync ended the session. */
+	reason?: string;
+	/** token replaces the page token for the next reconnect. */
+	token?: string;
 }
 
 /** SwappedCallback is told which region was swapped or which collection container changed. */
@@ -64,10 +68,15 @@ export function apply(ev: WireEvent): void {
 		case "ready":
 			markReady();
 			return;
-		case "resync":
-			recordLive("resync");
+		case "resync": {
+			const reason = ev.reason ?? "lost";
+			recordLive("resync", reason);
 			abandonPending();
-			location.reload();
+			if (!endSession(reason)) location.reload();
+			return;
+		}
+		case "token":
+			if (ev.token) setPageToken(ev.token);
 			return;
 		case "dev":
 			applyDev(ev as DevFrame);

@@ -96,6 +96,8 @@ export interface LiveEvent {
 	type: "disconnect" | "resume" | "resync";
 	/** at is epoch ms. */
 	at: number;
+	/** reason is why the server resynced: "lost", "overflow", "revoked", "max-age" or "refused". */
+	reason?: string;
 }
 /** LiveRecord counts live-channel transitions and keeps the most recent. */
 export interface LiveRecord {
@@ -112,8 +114,8 @@ const live: LiveRecord = { connection: "connecting", disconnects: 0, resumes: 0,
 const liveListeners: Array<(ev: LiveEvent) => void> = [];
 
 /** recordLive records a live-channel transition and emits it on the bus. */
-export function recordLive(type: LiveEvent["type"]): void {
-	const ev: LiveEvent = { type, at: Date.now() };
+export function recordLive(type: LiveEvent["type"], reason?: string): void {
+	const ev: LiveEvent = reason === undefined ? { type, at: Date.now() } : { type, at: Date.now(), reason };
 	switch (type) {
 		case "disconnect":
 			live.disconnects++;
@@ -138,7 +140,8 @@ export function recordLive(type: LiveEvent["type"]): void {
 			console.error("tc: live event listener failed", err);
 		}
 	}
-	emit(type, undefined);
+	if (type === "resync") emit("resync", { reason: reason ?? "lost" });
+	else emit(type, undefined);
 }
 
 /** markLiveOpen marks the channel open. */
@@ -166,6 +169,42 @@ export function readConfig(): Config {
 	}
 	config = parsed;
 	return config;
+}
+
+/** setPageToken replaces the token the next reconnect proves the session with. */
+export function setPageToken(token: string): void {
+	readConfig().token = token;
+}
+
+const sessionEndHandlers: Array<(reason: string) => void> = [];
+let stopLive: () => void = () => {};
+
+/** onSessionEnd handles an ended session instead of the reload: the stream stops, then fn gets the reason. */
+export function onSessionEnd(fn: (reason: string) => void): Unsubscribe {
+	sessionEndHandlers.push(fn);
+	return () => {
+		const i = sessionEndHandlers.indexOf(fn);
+		if (i >= 0) sessionEndHandlers.splice(i, 1);
+	};
+}
+
+/** setLiveStopper registers how endSession stops the stream. */
+export function setLiveStopper(fn: () => void): void {
+	stopLive = fn;
+}
+
+/** endSession stops the stream and runs the onSessionEnd handlers; false when there are none, so the caller reloads. */
+export function endSession(reason: string): boolean {
+	if (sessionEndHandlers.length === 0) return false;
+	stopLive();
+	for (const fn of [...sessionEndHandlers]) {
+		try {
+			fn(reason);
+		} catch (err) {
+			recordListenerError("sessionEnd", err);
+		}
+	}
+	return true;
 }
 
 /** pageToken returns the page token, or "" when none. */
@@ -235,7 +274,8 @@ export interface TcEvents {
 	ready: undefined;
 	disconnect: undefined;
 	resume: undefined;
-	resync: undefined;
+	/** resync fires when the server ends the page's session; the page then reloads unless onSessionEnd handles it. */
+	resync: { reason: string };
 	"swap:before": { topic: string; el: Element };
 	"swap:after": { topic: string; el: Element };
 	/** item fires per collection item changed; a reset fires once with the container as el and an empty key. */

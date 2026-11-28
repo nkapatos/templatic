@@ -46,14 +46,16 @@ its logins in a store.
   which refuses cross-origin POSTs (including to `/live/commands`).
 - **Logout is a POST.** A logout link would be fetched by `Boot`'s
   `Prefetch` speculation rules (off here, but a link is still the wrong
-  verb). `POST /logout` forgets the login and clears the cookie.
+  verb). `POST /logout` forgets the login, clears the cookie and ends the
+  browser's open pages: `signOut` (`auth.go`) calls `w.EndSessions` for
+  the sessions whose stream came with that cookie. Each page gets a
+  resync and reloads into the login redirect; another user's pages go on.
+- **Only a signed-in browser connects.** `live.WithAdmit(l.admits)`
+  (`main.go`) checks every stream connect and reattach: the cookie must be
+  signed in as the page token's user. `TestSignOutEndsThatBrowsersPages`
+  and `TestAdmitsOnlyTheSignedInUser` cover both.
 
-Logging out does not end the user's open pages: no API closes a session,
-so another tab of the same user keeps receiving live updates until it
-reloads, and its stream reattaches by page token alone for the token's
-lifetime (12h by default)
-([#50](https://github.com/nkapatos/templatic/issues/50)). Its commands are
-refused, since the cookie is gone. A refused command shows nothing in the form with JavaScript; the
+A refused command shows nothing in the form with JavaScript; the
 runtime only logs a warning
 ([#31](https://github.com/nkapatos/templatic/issues/31)).
 

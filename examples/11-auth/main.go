@@ -29,7 +29,9 @@ func main() {
 	// Page tokens are HMAC-signed. Set TC_KEY (32+ random bytes) in
 	// production; without it a per-process key is used and open pages
 	// must reload after a restart.
-	opts := []live.Option{live.WithRequestCookies(cookieName)}
+	l := newLogins()
+	// A page's stream connects only while its browser is signed in as the page's user.
+	opts := []live.Option{live.WithRequestCookies(cookieName), live.WithAdmit(l.admits)}
 	if key := os.Getenv("TC_KEY"); key != "" {
 		opts = append(opts, live.WithKey([]byte(key)))
 	}
@@ -42,7 +44,7 @@ func main() {
 	manifests.Notify(w)
 
 	log.Printf("auth: listening on %s", addr)
-	if err := http.ListenAndServe(addr, newApp(w, manifests, newLogins())); err != nil {
+	if err := http.ListenAndServe(addr, newApp(w, manifests, l)); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -97,7 +99,7 @@ func newApp(w *live.World, manifests *templatic.ManifestSource, l *logins) http.
 	})
 	mux.HandleFunc("POST /logout", func(rw http.ResponseWriter, r *http.Request) {
 		if c, err := r.Cookie(cookieName); err == nil {
-			l.logout(c.Value)
+			l.signOut(w, c.Value)
 		}
 		http.SetCookie(rw, &http.Cookie{Name: cookieName, Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 		http.Redirect(rw, r, "/login", http.StatusSeeOther)

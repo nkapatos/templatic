@@ -86,6 +86,7 @@ export interface IslandContext {
 // @public
 export interface LiveEvent {
     at: number;
+    reason?: string;
     // (undocumented)
     type: "disconnect" | "resume" | "resync";
 }
@@ -108,6 +109,9 @@ export function on<E extends keyof TcEvents>(event: E, fn: (detail: TcEvents[E])
 
 // @public
 export function onReady(fn: () => void): () => void;
+
+// @public
+export function onSessionEnd(fn: (reason: string) => void): Unsubscribe;
 
 // @public
 export function scan(root: ParentNode): Promise<void>;
@@ -165,8 +169,9 @@ export interface TcEvents {
     ready: undefined;
     // (undocumented)
     resume: undefined;
-    // (undocumented)
-    resync: undefined;
+    resync: {
+        reason: string;
+    };
 }
 
 // @public
