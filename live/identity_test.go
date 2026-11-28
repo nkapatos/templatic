@@ -426,3 +426,12 @@ func TestTokenPayloadKeysAreSorted(t *testing.T) {
 		}
 	}
 }
+
+func TestWithKeyRejectsShortKey(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("a 31-byte key must panic")
+		}
+	}()
+	WithKey(testKey[:MinKeyLen-1])
+}

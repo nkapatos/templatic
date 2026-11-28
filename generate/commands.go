@@ -124,7 +124,9 @@ func writeCommandsTS(opts Options, prog *program) error {
 	b.WriteString("export function send<K extends CommandName, R = unknown>(name: K, args: Commands[K]): Promise<R | null> {\n\treturn rawSend<R>(name, args);\n}\n")
 	slices.Sort(notes)
 	for _, n := range append(skipped, notes...) {
-		b.WriteString("// note: " + n + "\n")
+		b.WriteString("// note: ")
+		b.WriteString(n)
+		b.WriteString("\n")
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err

@@ -232,7 +232,7 @@ func (c *tsConv) fieldsBody(st *types.Struct, indent string, names *[]string) st
 			opt = "?"
 			tsType = strings.TrimSuffix(tsType, " | null")
 		}
-		sb.WriteString(indent + tsPropName(f.name) + opt + ": " + tsType + ";\n")
+		fmt.Fprintf(&sb, "%s%s%s: %s;\n", indent, tsPropName(f.name), opt, tsType)
 	}
 	return sb.String()
 }

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/a-h/templ"
+
 	"github.com/nkapatos/templatic"
 )
 
@@ -96,5 +98,20 @@ func TestHeadEscapesAttributes(t *testing.T) {
 	got := renderHead(t, templatic.HeadOptions{Assets: "/s", Manifest: m, Styles: []string{"app"}})
 	if strings.Contains(got, `a"b<`) || !strings.Contains(got, "a&quot;b&lt;.css") {
 		t.Fatalf("not escaped: %s", got)
+	}
+}
+
+func TestHeadWritesTemplNonceOnModulePreloads(t *testing.T) {
+	var buf bytes.Buffer
+	ctx := templ.WithNonce(context.Background(), "n1")
+	if err := templatic.Head(templatic.HeadOptions{Assets: "/s", Manifest: headManifest(), Styles: []string{"app"}}).Render(ctx, &buf); err != nil {
+		t.Fatal(err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, `<link rel="modulepreload" href="/s/boot-1111111111.js" nonce="n1" integrity="sha384-boot">`) {
+		t.Fatalf("modulepreload lacks the nonce: %s", got)
+	}
+	if strings.Contains(got, `rel="stylesheet" href="/s/app-6666666666.css" nonce`) {
+		t.Fatalf("stylesheets take no script nonce: %s", got)
 	}
 }

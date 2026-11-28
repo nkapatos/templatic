@@ -20,8 +20,14 @@ import (
 // DefaultTokenTTL bounds how old a page token may be at connect time.
 const DefaultTokenTTL = 12 * time.Hour
 
-// WithKey sets the HMAC key that signs page tokens.
+// MinKeyLen is the shortest key WithKey accepts.
+const MinKeyLen = 32
+
+// WithKey sets the HMAC key that signs page tokens; it panics on a key shorter than MinKeyLen bytes.
 func WithKey(key []byte) Option {
+	if len(key) < MinKeyLen {
+		panic(fmt.Sprintf("live: WithKey needs at least %d bytes, got %d", MinKeyLen, len(key)))
+	}
 	return func(w *World) { w.key = append([]byte(nil), key...) }
 }
 

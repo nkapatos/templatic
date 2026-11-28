@@ -10,6 +10,7 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/nkapatos/templatic/internal/markup"
 	"github.com/nkapatos/templatic/internal/pagestate"
 )
 
@@ -75,7 +76,7 @@ func Boot(o BootOptions) templ.Component {
 			}
 		}
 		if o.Prefetch {
-			if _, err := io.WriteString(w, `<script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>`); err != nil {
+			if err := markup.WriteStrings(w, `<script type="speculationrules"`, nonceAttr(ctx), `>{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>`); err != nil {
 				return err
 			}
 		}
@@ -91,8 +92,8 @@ func Boot(o BootOptions) templ.Component {
 		if o.Manifest != nil && o.Manifest.Modules["boot"].File != "" {
 			bootFile = o.Manifest.Modules["boot"].File
 		}
-		if _, err := fmt.Fprintf(w, `</script><script type="module" src=%q async></script>`,
-			templ.EscapeString(assets+"/"+bootFile)); err != nil {
+		if _, err := fmt.Fprintf(w, `</script><script type="module" src=%q%s async></script>`,
+			templ.EscapeString(assets+"/"+bootFile), nonceAttr(ctx)); err != nil {
 			return err
 		}
 		return nil

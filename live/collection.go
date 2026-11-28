@@ -15,6 +15,8 @@ import (
 
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
+
+	"github.com/nkapatos/templatic/internal/markup"
 )
 
 // DefaultHistory is how many bytes of recent ops a collection keeps to catch a page up.
@@ -321,26 +323,35 @@ func (c *Collection[T]) render0(ctx context.Context, w io.Writer, attrs templ.At
 			return err
 		}
 	}
-	_, err := io.WriteString(w, "</"+c.container+">")
-	return err
+	return markup.WriteStrings(w, "</", c.container, ">")
 }
 
 func (c *Collection[T]) openTag(version uint64) string {
-	tag := "<" + c.container + ` data-tc-collection="` + c.topic + `" data-tc-ver="` + strconv.FormatUint(version, 10) + `"`
+	var b strings.Builder
+	b.WriteString("<")
+	b.WriteString(c.container)
+	b.WriteString(` data-tc-collection="`)
+	b.WriteString(c.topic)
+	b.WriteString(`" data-tc-ver="`)
+	b.WriteString(strconv.FormatUint(version, 10))
+	b.WriteString(`"`)
 	if c.tail {
-		tag += ` data-tc-dir="tail"`
+		b.WriteString(` data-tc-dir="tail"`)
 	}
 	if c.limit > 0 {
-		tag += ` data-tc-limit="` + strconv.Itoa(c.limit) + `"`
+		b.WriteString(` data-tc-limit="`)
+		b.WriteString(strconv.Itoa(c.limit))
+		b.WriteString(`"`)
 	}
-	return tag + ">"
+	b.WriteString(">")
+	return b.String()
 }
 
 func (c *Collection[T]) writeItem(ctx context.Context, w io.Writer, it T, key string) error {
 	if c.render == nil {
 		panic(fmt.Errorf("live: collection %q needs Renders before use", c.topic))
 	}
-	if _, err := io.WriteString(w, "<"+c.item+` data-tc-item="`+key+`"`); err != nil {
+	if err := markup.WriteStrings(w, "<", c.item, ` data-tc-item="`, key, `"`); err != nil {
 		return err
 	}
 	if c.attrs != nil {
@@ -363,8 +374,7 @@ func (c *Collection[T]) writeItem(ctx context.Context, w io.Writer, it T, key st
 			return err
 		}
 	}
-	_, err := io.WriteString(w, "</"+c.item+">")
-	return err
+	return markup.WriteStrings(w, "</", c.item, ">")
 }
 
 func (c *Collection[T]) renderItem(it T, key string) (string, error) {

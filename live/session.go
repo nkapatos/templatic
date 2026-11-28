@@ -97,7 +97,7 @@ func (s *Session) setReportedURL(raw string) {
 // SID returns the session identifier.
 func (s *Session) SID() string { return s.sid }
 
-// A detached session keeps only the latest swap per topic: reattach resends cells and replays streams by state.
+// A detached session keeps only the latest swap per topic: reattach resends cells and catches collections up by version.
 func (s *Session) offer(ev event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

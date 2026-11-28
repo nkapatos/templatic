@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
+
+	"github.com/nkapatos/templatic/internal/markup"
 )
 
 // Option configures a component's element: Swaps, Class, Attrs or
@@ -80,7 +82,7 @@ func validAttrName(s string) bool {
 
 func (c elemConfig) writeExtras(w io.Writer) error {
 	if c.class != "" {
-		if _, err := io.WriteString(w, ` class="`+templ.EscapeString(c.class)+`"`); err != nil {
+		if err := markup.WriteStrings(w, ` class="`, templ.EscapeString(c.class), `"`); err != nil {
 			return err
 		}
 	}
@@ -92,11 +94,11 @@ func (c elemConfig) writeExtras(w io.Writer) error {
 		switch v := c.attrs[k].(type) {
 		case bool:
 			if v {
-				_, err = io.WriteString(w, " "+k)
+				err = markup.WriteStrings(w, " ", k)
 			}
 		case nil:
 		default:
-			_, err = io.WriteString(w, " "+k+`="`+templ.EscapeString(fmt.Sprint(v))+`"`)
+			err = markup.WriteStrings(w, " ", k, `="`, templ.EscapeString(fmt.Sprint(v)), `"`)
 		}
 		if err != nil {
 			return err

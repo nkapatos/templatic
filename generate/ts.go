@@ -79,7 +79,9 @@ func propsTypesSource(isl Island, types *propsTypes) string {
 		fmt.Fprintf(&sb, "export interface %s {\n%s}\n\n", name, types.Interfaces[name])
 	}
 	for _, w := range types.Warnings {
-		sb.WriteString("// note: " + w + "\n")
+		sb.WriteString("// note: ")
+		sb.WriteString(w)
+		sb.WriteString("\n")
 	}
 	return sb.String()
 }
@@ -108,7 +110,9 @@ func hooksSource(isl Island) string {
 	sb.WriteString("export const mounts: Array<(host: Host, props: HostProps, ctx: IslandContext) => void> = [];\n")
 	sb.WriteString("export const updates: Array<(host: Host, props: HostProps, changed: PropertyMap) => void> = [];\n")
 	sb.WriteString("export const unmounts: Array<(host: Host) => void> = [];\n\n")
-	sb.WriteString("export type HostProps = " + props + " | null;\n\n")
+	sb.WriteString("export type HostProps = ")
+	sb.WriteString(props)
+	sb.WriteString(" | null;\n\n")
 	sb.WriteString("// ctx aborts and disposes what it registered when this mount unmounts.\n")
 	sb.WriteString("export function onMount(fn: (host: Host, props: HostProps, ctx: IslandContext) => void): void {\n\tmounts.push(fn);\n}\n\n")
 	sb.WriteString("export function onUpdate(fn: (host: Host, props: HostProps, changed: PropertyMap) => void): void {\n\tupdates.push(fn);\n}\n\n")

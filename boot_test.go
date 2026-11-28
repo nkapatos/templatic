@@ -130,3 +130,29 @@ func TestBootKeepsScriptEndInsideTheConfigTag(t *testing.T) {
 		t.Fatalf("config string not escaped: %q", got)
 	}
 }
+
+func TestBootWritesTemplNonce(t *testing.T) {
+	m := &templatic.Manifest{Modules: map[string]templatic.ManifestModule{
+		"boot":          {File: "boot-1.js"},
+		"modules/chart": {File: "modules/chart-abc.js"},
+	}}
+	var buf bytes.Buffer
+	ctx := templ.WithNonce(context.Background(), "n1")
+	o := templatic.BootOptions{Live: "/live", Assets: "/a", Manifest: m, Prefetch: true, Modules: []string{"chart"}}
+	if err := templatic.Boot(o).Render(ctx, &buf); err != nil {
+		t.Fatal(err)
+	}
+	got := buf.String()
+	for _, want := range []string{
+		`<link rel="modulepreload" href="/a/modules/chart-abc.js" nonce="n1">`,
+		`<script type="speculationrules" nonce="n1">`,
+		`<script type="module" src="/a/boot-1.js" nonce="n1" async>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %s in %q", want, got)
+		}
+	}
+	if plain := render(t, templatic.Boot(o)); strings.Contains(plain, "nonce") {
+		t.Fatalf("no nonce in context, none written: %q", plain)
+	}
+}

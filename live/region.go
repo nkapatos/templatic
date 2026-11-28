@@ -8,6 +8,8 @@ import (
 	"io"
 
 	"github.com/a-h/templ"
+
+	"github.com/nkapatos/templatic/internal/markup"
 )
 
 // Region is a server-rendered fragment the world can redraw.
@@ -26,7 +28,7 @@ func (r *Region) Render(ctx context.Context, w io.Writer) error {
 }
 
 func regionMarker(ctx context.Context, w io.Writer, topic string, comp templ.Component) error {
-	if _, err := io.WriteString(w, `<div data-tc-region="`+topic+`">`); err != nil {
+	if err := markup.WriteStrings(w, `<div data-tc-region="`, topic, `">`); err != nil {
 		return err
 	}
 	if comp != nil {

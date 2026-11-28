@@ -71,16 +71,29 @@ func Head(o HeadOptions) templ.Component {
 // records each URL in pagestate so a later writer skips it.
 func writeLinks(ctx context.Context, sb *strings.Builder, m *Manifest, base, rel string, files ...string) {
 	for _, file := range files {
-		if file == "" || !pagestate.NoteLink(ctx, base+"/"+file) {
+		if file == "" {
 			continue
 		}
-		sb.WriteString(`<link rel="` + rel + `"`)
+		url := base + "/" + file
+		if !pagestate.NoteLink(ctx, url) {
+			continue
+		}
+		sb.WriteString(`<link rel="`)
+		sb.WriteString(rel)
+		sb.WriteString(`"`)
 		if rel == "preload" { // only css is preloaded
 			sb.WriteString(` as="style"`)
 		}
-		sb.WriteString(` href="` + markup.EscapeAttr(base+"/"+file) + `"`)
+		sb.WriteString(` href="`)
+		sb.WriteString(markup.EscapeAttr(url))
+		sb.WriteString(`"`)
+		if rel == "modulepreload" {
+			sb.WriteString(nonceAttr(ctx))
+		}
 		if sum := m.Integrity[file]; sum != "" {
-			sb.WriteString(` integrity="` + markup.EscapeAttr(sum) + `"`)
+			sb.WriteString(` integrity="`)
+			sb.WriteString(markup.EscapeAttr(sum))
+			sb.WriteString(`"`)
 		}
 		sb.WriteString(">")
 	}
@@ -91,4 +104,13 @@ func writeLinks(ctx context.Context, sb *strings.Builder, m *Manifest, base, rel
 func writeIslandLinks(ctx context.Context, sb *strings.Builder, m *Manifest, base string, mod ManifestModule) {
 	writeLinks(ctx, sb, m, base, "modulepreload", append([]string{mod.File}, mod.Imports...)...)
 	writeLinks(ctx, sb, m, base, "preload", mod.CSS...)
+}
+
+// nonceAttr is ` nonce="…"` for the CSP nonce templ.WithNonce set, or "" without one.
+func nonceAttr(ctx context.Context) string {
+	n := templ.GetNonce(ctx)
+	if n == "" {
+		return ""
+	}
+	return ` nonce="` + markup.EscapeAttr(n) + `"`
 }
