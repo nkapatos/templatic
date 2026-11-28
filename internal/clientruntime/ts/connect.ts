@@ -4,7 +4,7 @@
 
 import { heldParam } from "./subscribe";
 import { apply, type WireEvent } from "./live";
-import { markLiveOpen, pageToken, readConfig, recordLive } from "./tc";
+import { markLiveOpen, pageToken, readConfig, recordLive, setLiveStopper } from "./tc";
 
 const BASE_DELAY_MS = 1000;
 const MAX_DELAY_MS = 15000;
@@ -30,6 +30,7 @@ export function connect(): EventSource {
 	let delay = BASE_DELAY_MS;
 	let current: EventSource | undefined;
 	let retry: ReturnType<typeof setTimeout> | undefined;
+	let stopped = false; // the session ended and the app handles it: never reconnect
 
 	// drop closes the stream and records the outage once, however many drops it spans
 	const drop = (): void => {
@@ -65,6 +66,7 @@ export function connect(): EventSource {
 		});
 		es.onerror = () => {
 			drop();
+			if (stopped) return;
 			// equal jitter so clients torn together do not reconnect in lockstep
 			retry = setTimeout(() => open(true), delay / 2 + Math.random() * (delay / 2));
 			delay = Math.min(delay * 2, MAX_DELAY_MS);
@@ -72,10 +74,14 @@ export function connect(): EventSource {
 		return es;
 	};
 
+	setLiveStopper(() => {
+		stopped = true;
+		drop();
+	});
 	window.addEventListener("pagehide", drop);
 	window.addEventListener("pageshow", () => {
 		// only a page restored from the cache shows without a stream; it reattaches at once, resuming within the session's grace, else the server resyncs
-		if (current) return;
+		if (current || stopped) return;
 		delay = BASE_DELAY_MS;
 		open(true);
 	});

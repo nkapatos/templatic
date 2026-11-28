@@ -62,6 +62,21 @@ func (l *logins) logout(id string) {
 	l.mu.Unlock()
 }
 
+// signOut forgets the cookie value and ends the live pages that browser has open.
+func (l *logins) signOut(w *live.World, id string) {
+	l.logout(id)
+	w.EndSessions(func(s *live.Session) bool {
+		c, ok := s.Request().Cookie(cookieName)
+		return ok && c.Value == id
+	})
+}
+
+// admits reports whether r's browser is signed in as the user of the page whose params these are.
+func (l *logins) admits(r *http.Request, params map[string]string) bool {
+	u, ok := l.fromRequest(r)
+	return ok && u.Name == params[userParam]
+}
+
 // lookup returns the user a cookie value is signed in as.
 func (l *logins) lookup(id string) (components.User, bool) {
 	l.mu.Lock()

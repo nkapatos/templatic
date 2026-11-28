@@ -79,6 +79,7 @@ type tokenClaims struct {
 	Issued int64                     `json:"i"`
 	Params map[string]string         `json:"p,omitempty"`
 	Seeds  map[string]jsontext.Value `json:"c,omitempty"`
+	Gen    uint64                    `json:"g,omitzero"` // reissue count, so two reissues in one second differ
 }
 
 // PageToken mints a session identity and returns the signed token that proves it.
@@ -96,6 +97,22 @@ func (w *World) PageToken(r *http.Request, opts ...TokenOption) string {
 		return ""
 	}
 	return w.sign(payload)
+}
+
+// reissue signs a fresh token for a live session: its sid and params, issued now, without seeds.
+func (w *World) reissue(sid string, params map[string]string, gen uint64) string {
+	payload, err := json.Marshal(tokenClaims{SID: sid, Issued: w.clock().Unix(), Params: params, Gen: gen}, json.Deterministic(true))
+	if err != nil {
+		return ""
+	}
+	return w.sign(payload)
+}
+
+func tokenBody(token string) jsontext.Value {
+	b, _ := json.Marshal(struct {
+		Token string `json:"token"`
+	}{token})
+	return b
 }
 
 var (

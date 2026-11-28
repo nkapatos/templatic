@@ -36,6 +36,32 @@ type World struct {
 	coalesce     time.Duration
 	submits      submitStore
 	swapGen      atomic.Uint64 // stamps swaps in the order their state was read
+	admit        func(r *http.Request, params map[string]string) bool
+	maxAge       time.Duration
+}
+
+// WithAdmit sets the check every stream connect must pass, new session or reattach, with the request and the page
+// token's params; a refused reattach ends the session.
+func WithAdmit(fn func(r *http.Request, params map[string]string) bool) Option {
+	return func(w *World) { w.admit = fn }
+}
+
+// WithMaxSessionAge ends a session d after it was created, connected or not; zero means no limit.
+func WithMaxSessionAge(d time.Duration) Option {
+	return func(w *World) { w.maxAge = d }
+}
+
+// EndSessions ends every session match accepts: its page is sent a resync and the session is retired. It returns
+// how many ended.
+func (w *World) EndSessions(match func(s *Session) bool) int {
+	n := 0
+	for _, s := range w.liveSessions() {
+		if match(s) {
+			s.end(ReasonRevoked)
+			n++
+		}
+	}
+	return n
 }
 
 // Option configures a World at construction.

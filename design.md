@@ -130,6 +130,20 @@ contracts apps rely on:
   dataset it already holds. This follows Phoenix LiveView's streams, but the
   set is kept once per world rather than per connection, so a page can be
   caught up.
+- **The app decides who stays connected; a token's age limits only creating a
+  session.** A page token's TTL bounds the time from render to the first
+  connect. Once a session lives, an expired token may still reattach it:
+  its life is bounded by the app instead, which refuses connects
+  (`WithAdmit`), ends sessions that match a check on their params
+  (`EndSessions`, e.g. at logout) and caps their age
+  (`WithMaxSessionAge`). Each attach hands the page a fresh token over the
+  stream and accepts only the newest or the one before, so a token seen in
+  a URL (EventSource cannot send headers) soon stops working. An ended page
+  gets a resync with the reason and reloads through the app's own handler,
+  unless it handles the end itself (`onSessionEnd`). The token is not kept
+  in a cookie or localStorage: a cookie is shared by tabs while sessions are
+  per page, templatic sets no headers on the app's pages (rule 3), and
+  localStorage is open to any script and outlives the page.
 - **The generator reads Go through the type checker**, after templ's
   generation: real types across packages, aliases, embedded fields,
   constants and build tags, instead of resolving syntax by hand.

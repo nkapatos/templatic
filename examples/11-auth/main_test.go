@@ -67,5 +67,41 @@ func TestCommandAuthorization(t *testing.T) {
 	}
 }
 
+func TestSignOutEndsThatBrowsersPages(t *testing.T) {
+	w := live.NewWorld(live.WithRequestCookies(cookieName))
+	l := newLogins()
+	newApp(w, nil, l)
+	aliceCookie, bobCookie := l.login("alice", "alice"), l.login("bob", "bob")
+	bobTab1, bobTab2 := page(t, w, "bob", bobCookie), page(t, w, "bob", bobCookie)
+	alice := page(t, w, "alice", aliceCookie)
+
+	l.signOut(w, bobCookie)
+	for name, p := range map[string]*livetest.Session{"bob's first tab": bobTab1, "bob's second tab": bobTab2} {
+		if p.Drop(); p.Resume() {
+			t.Errorf("%s still reattaches after sign-out", name)
+		}
+	}
+	if alice.Drop(); !alice.Resume() {
+		t.Error("alice's page ended with bob's")
+	}
+}
+
+func TestAdmitsOnlyTheSignedInUser(t *testing.T) {
+	l := newLogins()
+	bobCookie := l.login("bob", "bob")
+	r := httptest.NewRequest("GET", "/live/stream", nil)
+	r.AddCookie(&http.Cookie{Name: cookieName, Value: bobCookie})
+	if !l.admits(r, map[string]string{userParam: "bob"}) {
+		t.Error("bob's browser refused on bob's page")
+	}
+	if l.admits(r, map[string]string{userParam: "alice"}) {
+		t.Error("bob's browser admitted on alice's page")
+	}
+	l.logout(bobCookie)
+	if l.admits(r, map[string]string{userParam: "bob"}) {
+		t.Error("a signed-out browser admitted")
+	}
+}
+
 // first drops a command's result and keeps its error.
 func first(_ any, err error) error { return err }

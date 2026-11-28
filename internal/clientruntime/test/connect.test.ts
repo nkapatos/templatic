@@ -260,3 +260,43 @@ describe("backoff", () => {
 		await reconnectsAfter(es, 1000);
 	});
 });
+
+describe("session end", () => {
+	test("a token frame is the token the next reconnect proves the session with", async () => {
+		const first = connected();
+		first.open();
+		first.frame({ kind: "token", token: "next.tok" });
+		first.frame({ kind: "ready" });
+		const es = await tear(first);
+		expect(es.url).toContain("t=next.tok");
+		expect(es.url).not.toContain(encodeURIComponent(TOKEN));
+	});
+
+	test("the resync event carries the reason; without a handler the page reloads", () => {
+		const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
+		const reasons: string[] = [];
+		tc.on("resync", (d) => reasons.push(d.reason));
+		const es = connected();
+		es.open();
+		es.frame({ kind: "resync", reason: "revoked" });
+		expect(reasons).toEqual(["revoked"]);
+		expect(reload).toHaveBeenCalledTimes(1);
+	});
+
+	test("with onSessionEnd the page keeps its DOM, gets the reason and never reconnects", async () => {
+		const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
+		const ended: string[] = [];
+		tc.onSessionEnd((reason) => ended.push(reason));
+		const es = connected();
+		es.open();
+		es.frame({ kind: "ready" });
+		const n = FakeEventSource.instances.length;
+		es.frame({ kind: "resync", reason: "max-age" });
+		expect(ended).toEqual(["max-age"]);
+		expect(reload).not.toHaveBeenCalled();
+		expect(es.closed).toBe(true);
+		window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+		await vi.advanceTimersByTimeAsync(20000);
+		expect(FakeEventSource.instances).toHaveLength(n);
+	});
+});

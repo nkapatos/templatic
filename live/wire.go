@@ -10,8 +10,22 @@ const (
 	KindReset  = "reset"
 	KindReady  = "ready"
 	KindResync = "resync"
+	KindToken  = "token"
 	KindDev    = "dev"
 )
+
+// Resync reasons: why a page's session cannot go on.
+const (
+	ReasonLost     = "lost"     // the server no longer holds the session, or cannot catch it up
+	ReasonOverflow = "overflow" // the page fell too far behind
+	ReasonRevoked  = "revoked"  // the app ended it (World.EndSessions)
+	ReasonMaxAge   = "max-age"  // older than WithMaxSessionAge
+	ReasonRefused  = "refused"  // the app's WithAdmit refused the connect
+)
+
+func resyncBody(reason string) jsontext.Value {
+	return jsontext.Value(`{"reason":"` + reason + `"}`)
+}
 
 // version orders value-shaped events of one topic when offers interleave.
 type event struct {

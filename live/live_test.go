@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -313,17 +312,25 @@ func serveWorld(t *testing.T, w *World) *httptest.Server {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 	servedWorlds.Store(ts.URL, w)
-	t.Cleanup(func() { servedWorlds.Delete(ts.URL) })
+	t.Cleanup(func() {
+		servedWorlds.Delete(ts.URL)
+	})
 	return ts
 }
 
 var (
 	servedWorlds sync.Map
-	testTokens   sync.Map
+	testTokens   sync.Map // tokenKey → the page's newest token
 )
 
+// tokenKey holds the world itself, not its address, so a later world cannot find another's tokens.
+type tokenKey struct {
+	w   *World
+	sid string
+}
+
 func tokenFor(w *World, sid string) string {
-	key := fmt.Sprintf("%p/%s", w, sid)
+	key := tokenKey{w, sid}
 	if tok, ok := testTokens.Load(key); ok {
 		return tok.(string)
 	}
@@ -336,11 +343,19 @@ func tokenFor(w *World, sid string) string {
 }
 
 type stream struct {
-	body io.Closer
-	sc   *bufio.Scanner
+	body     io.Closer
+	sc       *bufio.Scanner
+	tokenKey any // where the page's newest token is kept, as the client keeps it
 }
 
 func (s *stream) Close() { _ = s.body.Close() }
+
+// latestToken is the newest token the stream has sent so far, or "".
+func (s *stream) latestToken() string {
+	v, _ := testTokens.Load(s.tokenKey)
+	tok, _ := v.(string)
+	return tok
+}
 
 func openStream(t *testing.T, ts *httptest.Server, sid string) *stream {
 	t.Helper()
@@ -378,7 +393,7 @@ func openStreamQuery(t *testing.T, ts *httptest.Server, sid, extra string, heade
 	t.Cleanup(func() { resp.Body.Close() })
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-	return &stream{body: resp.Body, sc: sc}
+	return &stream{body: resp.Body, sc: sc, tokenKey: tokenKey{wOf, sid}}
 }
 
 func (s *stream) next(t *testing.T, timeout time.Duration) (string, bool) {
@@ -394,7 +409,13 @@ func (s *stream) next(t *testing.T, timeout time.Duration) (string, bool) {
 			line := s.sc.Text()
 			if line == "" {
 				if len(lines) > 0 {
-					ch <- res{strings.Join(lines, "\n"), true}
+					frame := strings.Join(lines, "\n")
+					if tok, ok := tokenOf(frame); ok {
+						testTokens.Store(s.tokenKey, tok)
+						lines = nil
+						continue
+					}
+					ch <- res{frame, true}
 					return
 				}
 				continue
@@ -443,4 +464,19 @@ func postCommand(t *testing.T, ts *httptest.Server, sid, action string, args jso
 func itoa(n int64) string {
 	b, _ := json.Marshal(n)
 	return string(b)
+}
+
+// tokenOf returns the token a token frame carries.
+func tokenOf(frame string) (string, bool) {
+	_, data, ok := strings.Cut(frame, "data: ")
+	if !ok || !strings.Contains(data, `"kind":"token"`) {
+		return "", false
+	}
+	var v struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal([]byte(data), &v); err != nil {
+		return "", false
+	}
+	return v.Token, true
 }
