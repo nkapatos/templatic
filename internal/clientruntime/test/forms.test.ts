@@ -262,3 +262,35 @@ describe("errors that name no field", () => {
 		expect(f.querySelector("[data-tc-form-error]")!.textContent).toBe("");
 	});
 });
+
+describe("forms rendered without a submission id", () => {
+	const submit = (f: HTMLFormElement): boolean => !f.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+	const sentKey = (body: unknown): string => new URLSearchParams(body as string).get("_tc_submit") ?? "";
+
+	test("carry a runtime key, kept for a retry, then the server's id", async () => {
+		const f = form(`<input name="title" value="t">`);
+		f.dataset.tcForm = "note.add";
+		f.setAttribute("action", "/notes");
+		forms.wireForms();
+		tc.markReady();
+		const calls = stubFetch({ status: 422, body: "no" }, { status: 204, headers: { "X-TC-Submit": "server-id" } }, { status: 204 });
+		submit(f);
+		await settle();
+		submit(f);
+		await settle();
+		submit(f);
+		await settle();
+		const [first, retry, next] = calls.map((c) => sentKey(c.init.body));
+		expect(first).toMatch(/^c\.[0-9a-f]{32}$/);
+		expect(retry).toBe(first);
+		expect(next).toBe("server-id");
+	});
+
+	test("send({ once }) carries the key on the command bus", async () => {
+		tc.markReady();
+		const calls = stubFetch({ status: 204 });
+		const key = commands.submitKey();
+		await commands.send("signup.register", { user: "ada" }, { submit: key });
+		expect(calls[0].json().submit).toBe(key);
+	});
+});

@@ -4,7 +4,7 @@
 
 import { html, nothing } from "lit";
 import { TanStackFormController, type AnyFieldApi } from "@tanstack/lit-form";
-import { CommandError } from "templatic";
+import { CommandError, submitKey } from "templatic";
 import { send, type components } from "templatic/commands";
 import { SignupFormBase } from "templatic/islands/signup-form.base";
 
@@ -28,12 +28,14 @@ customElements.define(
 	"signup-form",
 	class extends SignupFormBase {
 		welcome = "";
+		// one key per signup: a repeated submit runs once, so a double click cannot register twice
+		key = submitKey();
 		form = new TanStackFormController(this, {
 			defaultValues: { username: "", email: "", plan: "" } as SignupIn,
 			onSubmit: async ({ value, formApi }) => {
 				this.welcome = "";
 				try {
-					await send("signup.register", value);
+					await send("signup.register", value, { once: this.key });
 				} catch (err) {
 					if (!(err instanceof CommandError) || err.status !== 400) throw err;
 					// A 400 carries live.InputErrors by field name; they become submit errors,
@@ -42,6 +44,7 @@ customElements.define(
 					return;
 				}
 				this.welcome = `Welcome, ${value.username}.`;
+				this.key = submitKey();
 				formApi.reset();
 			},
 		});

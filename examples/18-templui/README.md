@@ -144,9 +144,7 @@ input's `Value`.
   ([#59](https://github.com/nkapatos/templatic/issues/59)), so it shows the
   message without the red border.
 - **Each task's Done/Reopen button** is a submit button of its own
-  `ui.FormFor(Toggle, "/toggle")` with `name="id"`. The forms are in the
-  region and lose their run-once id on a redraw
-  ([#32](https://github.com/nkapatos/templatic/issues/32)).
+  `ui.FormFor(Toggle, "/toggle")` with `name="id"`.
 
 ## Without JavaScript
 

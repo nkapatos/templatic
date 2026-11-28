@@ -69,10 +69,9 @@ the other. Then turn JavaScript off and sign up again.
   the errors in `ui.FieldError` and the typed values back; a success
   redirects to `/signup`. The refused input is not marked `aria-invalid`
   without JavaScript ([#59](https://github.com/nkapatos/templatic/issues/59)).
-  The island's typed `send` is not a form submission, so the run-once
-  guarantee for forms does not cover it; the island disables its button
-  while a submit is in flight
-  ([#63](https://github.com/nkapatos/templatic/issues/63)).
+  The island runs its signup once however often it is submitted: it keeps
+  a key from `submitKey()` and passes it as `send(…, { once: key })`
+  until a submit succeeds, so a repeat gets the first outcome.
 - **No `@tanstack/query-core`.** Fetching, caching and invalidation are
   what the live channel already does: the collections are the data, and
   every change is pushed. A query cache beside them would be a second source of

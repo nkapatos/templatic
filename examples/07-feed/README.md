@@ -49,9 +49,8 @@ other, and turn it back on.
   `/rooms/{room}/messages/{id}/like` or `/delete` (`Like.Form` and
   `Delete.Form` in `newMux`, `main.go`); without JavaScript the browser is
   redirected back. The room and the id come from the route. A form that
-  arrives in a live item has no run-once submission id
-  ([#32](https://github.com/nkapatos/templatic/issues/32)), so a repeated
-  like counts twice.
+  arrives in a live item has no submission id from the server; the
+  runtime gives it a run-once key, so a repeated like still counts once.
 - **Posting** reuses the form pattern of [03-forms](../03-forms): one
   `Post` command, `ui.FormFor` and `Post.Form` for both transports at
   `/rooms/{room}/messages`; without JavaScript it redirects back to the

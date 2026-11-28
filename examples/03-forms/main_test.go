@@ -74,7 +74,7 @@ func TestFormRunsOncePerSubmission(t *testing.T) {
 	w, h, books := app(t)
 
 	id := w.SubmitID(w.PageToken(httptest.NewRequest("GET", "/", nil)))
-	form := url.Values{"title": {"Dune"}, "pages": {"412"}, "shelf": {"done"}, "_tc_submit": {id}}
+	form := url.Values{"title": {"Dune"}, "pages": {"412"}, "shelf": {"done"}, live.SubmitField: {id}}
 	for range 2 {
 		r := httptest.NewRequest("POST", "/books", strings.NewReader(form.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")

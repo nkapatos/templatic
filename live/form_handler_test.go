@@ -93,3 +93,35 @@ func TestFormWithoutJSFindsTheLiveSessionBySubmissionID(t *testing.T) {
 		t.Fatal("a form without a submission id has no session")
 	}
 }
+
+func TestARuntimeKeyMakesASwappedFormRunOnce(t *testing.T) {
+	var runs atomic.Int32
+	w, ts, cmd := liveWorld(t, "s1", func(*Session, noteIn) (any, error) { runs.Add(1); return nil, nil })
+	h := cmd.Form(w, func(*http.Request, *Session, noteIn) (string, error) { runs.Add(1); return "/", nil }, nil)
+	key := "c.0f8e0c5e-8f0a-4c6b-9a57-2d3a4a1c9b11"
+	vals := url.Values{"title": {"a"}, SubmitField: {key}}
+
+	for range 2 {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, jsFormReq("s1", vals))
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("JS submit: %d", rec.Code)
+		}
+	}
+	if runs.Load() != 1 {
+		t.Fatalf("a repeated runtime key ran %d times, want 1", runs.Load())
+	}
+	// the same key on the command bus, as an island's send({once}) sends it
+	for range 2 {
+		postForm(t, ts, "s1", "note.add", "c.island-signup-0001", url.Values{"title": {"a"}})
+	}
+	if runs.Load() != 2 {
+		t.Fatalf("a repeated send key ran %d times in all, want 2", runs.Load())
+	}
+	// without JavaScript there is no session to scope a runtime key to: it guards nothing
+	h.ServeHTTP(httptest.NewRecorder(), formReq(vals))
+	h.ServeHTTP(httptest.NewRecorder(), formReq(vals))
+	if runs.Load() != 4 {
+		t.Fatalf("runs %d, want 4", runs.Load())
+	}
+}

@@ -71,7 +71,7 @@ func (h *commandsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if c, ok := h.world.verifySubmit(req.Submit); ok && c.SID == s.sid {
+	if c, ok := h.world.submitFor(req.Submit, s); ok && c.SID == s.sid {
 		w.Header().Set(SubmitHeader, h.world.mintSubmit(s.sid))
 		sub, first := h.world.claimSubmit(c)
 		if !first {

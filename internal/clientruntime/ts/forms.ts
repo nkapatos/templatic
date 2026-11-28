@@ -1,4 +1,4 @@
-import { CommandError, postForm } from "./commands";
+import { CommandError, postForm, submitKey } from "./commands";
 import { isReady } from "./tc";
 
 /** formBody encodes entries as a native submit would: CRLF line breaks, file fields as their name. */
@@ -107,6 +107,10 @@ export function formFailure(form: FailForm, err: unknown, submitter: HTMLElement
 // forms with a command in flight; a repeat submit is swallowed until it settles
 const inflight = new WeakSet<object>();
 
+// The submission id of a form rendered without one (it arrived in a swap): a runtime key until the first answer
+// brings a server id. Kept per form, so a retry of the same submission is recognized.
+const ids = new WeakMap<HTMLFormElement, string>();
+
 /** wireForms delegates submits of data-tc-form forms to commands. */
 export function wireForms(): void {
 	document.addEventListener("submit", (ev) => {
@@ -127,12 +131,18 @@ export function wireForms(): void {
 		const submitter = ev.submitter;
 		const fallbackSubmitter = (): HTMLElement | null =>
 			submitter && submitter.isConnected && (submitter as HTMLButtonElement).form === form ? submitter : null;
+		const field = form.querySelector<HTMLInputElement>(`input[name="${SUBMIT}"]`);
+		if (!field?.value) {
+			let id = ids.get(form);
+			if (!id) ids.set(form, (id = submitKey()));
+			data.set(SUBMIT, id);
+		}
 		// the form posts to its own action, as it would natively; the submission id rides in its fields
 		const body = form.hasAttribute("data-tc-multipart") ? data : formBody(data.entries());
 		const sent = postForm(action, form.getAttribute("action") ?? "", body, {
 			onSubmit: (id) => {
-				const field = form.querySelector<HTMLInputElement>(`input[name="${SUBMIT}"]`);
 				if (field) field.value = id;
+				else ids.set(form, id);
 			},
 		});
 		void sent
